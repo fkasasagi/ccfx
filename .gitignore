@@ -1,0 +1,11 @@
+ccfx
+ccfx.exe
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+ccfx-output/
+/tmp/
+.DS_Store
