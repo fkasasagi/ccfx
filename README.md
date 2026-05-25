@@ -83,7 +83,7 @@ ccfx [flags]
 ./ccfx --format html --date-from 2026-05-01 --date-to 2026-05-31 --redact-pii
 
 # 特定セッションの会話全文を抽出
-./ccfx --format json --session-filter "a1b2c3d4-b983-4ed3-aad5-3c9751bb58b9" --extract-conversations
+./ccfx --format json --session-filter "a1b2c3d4-e5f6-7890-abcd-ef1234567890" --extract-conversations
 ```
 
 ## 出力ファイル
