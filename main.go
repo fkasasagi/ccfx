@@ -11,13 +11,27 @@ import (
 
 	"github.com/fkasasagi/ccfx/analyzer"
 	"github.com/fkasasagi/ccfx/collector"
-	"github.com/fkasasagi/ccfx/model"
 	"github.com/fkasasagi/ccfx/renderer"
 )
 
 const version = "0.1.0"
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "help":
+			if len(os.Args) > 2 {
+				showTopicHelp(os.Args[2])
+			} else {
+				showHelp()
+			}
+			return
+		case "version":
+			fmt.Printf("ccfx v%s (%s/%s)\n", version, runtime.GOOS, runtime.GOARCH)
+			return
+		}
+	}
+
 	fs := flag.NewFlagSet("ccfx", flag.ExitOnError)
 	path := fs.String("path", "", "Path to ~/.claude/ directory (auto-detect if omitted)")
 	formatStr := fs.String("format", "json", "Output formats: csv,json,md,html (comma-separated)")
@@ -31,15 +45,17 @@ func main() {
 	redactPII := fs.Bool("redact-pii", false, "Redact email addresses and UUIDs")
 	verbose := fs.Bool("verbose", false, "Enable debug logging")
 	showVersion := fs.Bool("version", false, "Print version and exit")
+	showHelpFlag := fs.Bool("help", false, "Show help")
 
-	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "ccfx - Claude Code Forensics eXtractor v%s\n\n", version)
-		fmt.Fprintf(os.Stderr, "Usage: ccfx [flags]\n\nFlags:\n")
-		fs.PrintDefaults()
-	}
+	fs.Usage = func() { showHelp() }
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		os.Exit(1)
+	}
+
+	if *showHelpFlag {
+		showHelp()
+		return
 	}
 
 	if *showVersion {
@@ -128,6 +144,287 @@ func main() {
 	fmt.Printf("\n%d file(s) written to %s\n", len(result.Files), *outDir)
 }
 
+func showHelp() {
+	fmt.Print(`ccfx - Claude Code Forensics eXtractor v` + version + `
+
+  Analyze Claude Code local artifacts (~/.claude/) and generate
+  forensic reports revealing who used Claude Code, when, and how.
+
+USAGE
+  ccfx [flags]
+  ccfx help [topic]
+  ccfx version
+
+FLAGS
+  --path PATH              Path to ~/.claude/ directory (auto-detect if omitted)
+  --format FORMATS         Output formats: csv,json,md,html (default: json)
+  --output DIR             Output directory (default: ./ccfx-output)
+  --language en|ja         Report language (default: en)
+  --extract-conversations  Include full conversation content in report
+  --session-filter UUID    Analyze only the specified session
+  --project-filter PATH    Analyze only the specified project
+  --date-from YYYY-MM-DD   Include only activity on or after this date
+  --date-to YYYY-MM-DD     Include only activity on or before this date
+  --redact-pii             Mask email addresses and UUIDs in output
+  --verbose                Print debug information to stderr
+  --version                Print version and exit
+  --help                   Show this help
+
+EXAMPLES
+  ccfx                                          Analyze ~/.claude/, output JSON
+  ccfx --format csv,json,md,html --language ja  All formats in Japanese
+  ccfx --path /mnt/disk/.claude --format html   Analyze mounted evidence
+  ccfx --date-from 2026-05-01 --redact-pii      Filter by date, mask PII
+  ccfx --extract-conversations --format json     Include conversation text
+
+HELP TOPICS
+  ccfx help artifacts      Files and directories analyzed by ccfx
+  ccfx help formats        Output format details (CSV, JSON, Markdown, HTML)
+  ccfx help report         Report sections and what they contain
+  ccfx help security       Security considerations and credential handling
+  ccfx help examples       More usage examples and forensic workflows
+`)
+}
+
+func showTopicHelp(topic string) {
+	switch strings.ToLower(topic) {
+	case "artifacts":
+		showArtifactsHelp()
+	case "formats":
+		showFormatsHelp()
+	case "report":
+		showReportHelp()
+	case "security":
+		showSecurityHelp()
+	case "examples":
+		showExamplesHelp()
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown help topic: %q\n\n", topic)
+		fmt.Fprintf(os.Stderr, "Available topics: artifacts, formats, report, security, examples\n")
+		os.Exit(1)
+	}
+}
+
+func showArtifactsHelp() {
+	fmt.Print(`ARTIFACTS — Files and directories analyzed by ccfx
+
+  Claude Code stores data under ~/.claude/ (Windows: %%USERPROFILE%%\.claude\).
+  ccfx reads these files in read-only mode. Nothing is modified.
+
+  File / Directory                             What ccfx extracts
+  ─────────────────────────────────────────────────────────────────────────
+  history.jsonl                                Command history, timestamps,
+                                               session IDs
+
+  sessions/<pid>.json                          Session metadata: PID, CWD,
+                                               start/end time, version,
+                                               entrypoint (cli/web/etc)
+
+  projects/<encoded-path>/<uuid>.jsonl         Conversation transcripts,
+                                               tool calls (name + args),
+                                               model, token usage, git branch
+                                               ** Most important artifact **
+
+  backups/.claude.json.backup.<timestamp>      User email, org UUID,
+                                               subscription tier, per-project
+                                               cost & token stats
+
+  settings.json / settings.local.json          Permission rules (allow/deny),
+                                               hook definitions, effort level
+
+  .credentials.json                            Existence detection ONLY
+                                               (values are never read)
+
+  file-history/<session>/<hash>@v<n>           File edit version counts
+
+  shell-snapshots/                             Shell environment snapshot count
+  paste-cache/                                 Pasted content file count
+  tasks/                                       Task session count
+  plans/                                       Plan file count
+
+  The project path encoding replaces / with -, so /home/user/myproject
+  becomes -home-user-myproject in the directory name. ccfx decodes this
+  automatically and cross-references with backup data to resolve ambiguity.
+`)
+}
+
+func showFormatsHelp() {
+	fmt.Print(`FORMATS — Output format details
+
+  Specify one or more formats with --format (comma-separated).
+  All files are written to the --output directory.
+
+  FORMAT   FILES GENERATED          NOTES
+  ─────────────────────────────────────────────────────────────────────────
+  json     report.json              Complete ForensicReport as pretty-printed
+                                    JSON (2-space indent). Suitable for
+                                    programmatic consumption with jq, Python,
+                                    or other tools.
+
+  csv      sessions.csv             One row per session (ID, project, time,
+                                    duration, model, message/tool counts)
+           timeline.csv             Chronological events across all sessions
+           tool_usage.csv           Tool name, call count, session count
+           file_changes.csv         Files modified via Edit/Write tools
+           token_usage.csv          Daily token consumption breakdown
+                                    All CSV files include UTF-8 BOM for
+                                    Windows Excel compatibility.
+
+  md       report.md                10-section Markdown report. Suitable for
+                                    viewing on GitHub, in editors, or
+                                    converting to PDF via pandoc.
+
+  html     report.html              Self-contained HTML with embedded CSS.
+                                    Dark theme, scrollable tables, CSS bar
+                                    charts for tool usage. No external
+                                    resources needed. Print-friendly via
+                                    @media print rules.
+
+  Column headers respect --language (en/ja).
+
+EXAMPLES
+  ccfx --format json                 JSON only (default)
+  ccfx --format csv,html             CSV tables + visual HTML report
+  ccfx --format csv,json,md,html     Everything
+`)
+}
+
+func showReportHelp() {
+	fmt.Print(`REPORT — Report sections and what they contain
+
+  #   SECTION                    CONTENT
+  ─────────────────────────────────────────────────────────────────────────
+  1   User Identity              Email, account UUID, organization info,
+                                 subscription tier, Claude Code version.
+                                 Extracted from backup files.
+
+  2   Sessions                   All sessions with start time, duration,
+                                 model used, message/tool-use counts,
+                                 git branch, permission mode, and title.
+
+  3   Activity Timeline          Chronological list of user messages,
+                                 tool invocations, and assistant responses
+                                 across all sessions. Sorted by timestamp.
+
+  4   Projects                   Per-project summary: session count,
+                                 first/last seen dates, total messages
+                                 and tool uses.
+
+  5   Tool Usage Statistics      Ranking of tools by call count (Bash,
+                                 Edit, Write, Read, Agent, WebSearch, etc.)
+                                 with session count per tool.
+
+  6   Token Consumption          Total input/output/cache tokens.
+                                 Breakdown by model, project, and date.
+
+  7   File Modifications         Files created or edited via Write/Edit
+                                 tools, with timestamps and session IDs.
+
+  8   Permission & Security      Global/local deny and allow rules,
+                                 hook definitions, per-session permission
+                                 modes (default, plan, etc.)
+
+  9   Credential Discovery       Whether .credentials.json exists, its
+                                 size and modification date. Token values
+                                 are NEVER read or included.
+
+  10  Conversations              Full conversation text (user + assistant).
+                                 Only included with --extract-conversations.
+                                 Can produce very large output.
+`)
+}
+
+func showSecurityHelp() {
+	fmt.Print(`SECURITY — Security considerations and credential handling
+
+  READ-ONLY ANALYSIS
+    ccfx never modifies any file in the target ~/.claude/ directory.
+    All access is read-only. The tool can safely be run against live
+    installations or mounted forensic images.
+
+  CREDENTIAL HANDLING
+    The .credentials.json file contains OAuth tokens for the Claude API.
+    ccfx checks ONLY for the file's existence, size, and modification
+    date. Token values are never read, parsed, or included in output.
+
+  PII REDACTION (--redact-pii)
+    When enabled, email addresses and UUIDs in the output are masked:
+      user@example.com  →  us***@example.com
+      a1b2c3d4-e5f6-... →  a1b2c3d4-****-****-****-************
+    This applies to the user_identity section of the report.
+
+  OUTPUT SENSITIVITY
+    Generated reports may contain sensitive information:
+    - User email and organization details
+    - Conversation content (with --extract-conversations)
+    - File paths and project structures
+    - Tool commands executed (Bash commands, file edits)
+    Treat output files with appropriate access controls.
+
+  CROSS-MACHINE ANALYSIS
+    ccfx can analyze Claude Code data from another machine by pointing
+    --path to a mounted disk or copied directory. No network access is
+    required. The tool makes no API calls and has no internet dependency.
+`)
+}
+
+func showExamplesHelp() {
+	fmt.Print(`EXAMPLES — Usage examples and forensic workflows
+
+  BASIC USAGE
+    ccfx                                     Default: analyze ~/.claude/, JSON
+    ccfx --format html                       Visual HTML report
+    ccfx --format csv,json,md,html           All formats at once
+
+  INCIDENT RESPONSE
+    # Analyze a suspect's Claude Code data from mounted evidence
+    ccfx --path /mnt/evidence/home/user/.claude \
+         --format json,html \
+         --extract-conversations \
+         --redact-pii
+
+  INTERNAL AUDIT
+    # Monthly usage report in Japanese, CSV for spreadsheet import
+    ccfx --format csv \
+         --date-from 2026-05-01 \
+         --date-to 2026-05-31 \
+         --language ja
+
+  SECURITY REVIEW
+    # Check permission settings and credential status
+    ccfx --format html --language ja
+    # Open report.html → sections 8 (Permissions) and 9 (Credentials)
+
+  SPECIFIC SESSION INVESTIGATION
+    # Extract full conversation from a known session
+    ccfx --format json \
+         --session-filter "a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+         --extract-conversations
+
+  PROJECT-FOCUSED ANALYSIS
+    # Analyze only activity in a specific project
+    ccfx --format md \
+         --project-filter "/home/user/myproject"
+
+  COMBINING FILTERS
+    # Specific project, date range, with PII masking
+    ccfx --format json,html \
+         --project-filter "/home/user/myproject" \
+         --date-from 2026-05-01 \
+         --date-to 2026-05-15 \
+         --redact-pii
+
+  PROGRAMMATIC USE
+    # Parse JSON output with jq
+    ccfx --format json --output /tmp/ccfx
+    jq '.tool_usage.top_tools[:5]' /tmp/ccfx/report.json
+    jq '.sessions[] | select(.message_count > 50)' /tmp/ccfx/report.json
+
+  CUSTOM OUTPUT DIRECTORY
+    ccfx --format csv,html --output ./reports/2026-05
+`)
+}
+
 func parseFormats(s string) []string {
 	valid := map[string]bool{"csv": true, "json": true, "md": true, "html": true}
 	var out []string
@@ -149,28 +446,4 @@ func formatBytes(b int64) string {
 	default:
 		return fmt.Sprintf("%d B", b)
 	}
-}
-
-// Filter is used by the analyzer; defined here to keep model package clean.
-type Filter struct {
-	SessionID string
-	Project   string
-	DateFrom  *time.Time
-	DateTo    *time.Time
-}
-
-func (f *Filter) MatchSession(s model.Session) bool {
-	if f.SessionID != "" && s.SessionID != f.SessionID {
-		return false
-	}
-	if f.Project != "" && s.Project != f.Project {
-		return false
-	}
-	if f.DateFrom != nil && s.StartedAt.Before(*f.DateFrom) {
-		return false
-	}
-	if f.DateTo != nil && s.StartedAt.After(*f.DateTo) {
-		return false
-	}
-	return true
 }
