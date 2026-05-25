@@ -48,6 +48,8 @@ GOOS=windows GOARCH=amd64 go build -o ccfx.exe .
 
 ```
 ccfx [flags]
+ccfx help [topic]
+ccfx version
 ```
 
 ### フラグ一覧
@@ -55,7 +57,7 @@ ccfx [flags]
 | フラグ | デフォルト | 説明 |
 |---|---|---|
 | `--path PATH` | 自動検出 (`~/.claude/`) | 解析対象ディレクトリのパス |
-| `--format csv,json,md,html` | `json` | 出力フォーマット (カンマ区切りで複数指定可) |
+| `--format csv,json,md,html,all` | `json` | 出力フォーマット (カンマ区切りで複数指定可、`all` で全形式) |
 | `--output DIR` | `./ccfx-output` | 出力先ディレクトリ |
 | `--language en\|ja` | `en` | レポート言語 (英語 / 日本語) |
 | `--extract-conversations` | off | 会話の全文をレポートに含める |
@@ -66,6 +68,20 @@ ccfx [flags]
 | `--redact-pii` | off | email・UUID をマスク |
 | `--verbose` | off | デバッグログ出力 |
 | `--version` | - | バージョン表示 |
+| `--help` | - | ヘルプ表示 |
+
+### ヘルプシステム
+
+`ccfx help [topic]` でトピック別の詳細ヘルプを表示できます。
+
+| コマンド | 内容 |
+|---|---|
+| `ccfx help` | メインヘルプ (フラグ一覧、使用例、トピック一覧) |
+| `ccfx help artifacts` | 解析対象ファイルの場所・形式・抽出情報 |
+| `ccfx help formats` | CSV / JSON / Markdown / HTML 各フォーマットの詳細 |
+| `ccfx help report` | レポート 10 セクションの内容説明 |
+| `ccfx help security` | 認証情報の扱い、PII マスク、read-only 動作 |
+| `ccfx help examples` | IR・内部監査・セキュリティレビュー等のワークフロー例 |
 
 ### 基本的な使い方
 
@@ -73,8 +89,11 @@ ccfx [flags]
 # JSON レポートのみ (デフォルト)
 ./ccfx
 
+# 全フォーマットを一括出力
+./ccfx --format all
+
 # 全フォーマットを日本語で出力
-./ccfx --format csv,json,md,html --language ja
+./ccfx --format all --language ja
 
 # 別マシンの Claude データを解析 (USB マウント等)
 ./ccfx --path /mnt/evidence/home/user/.claude --format json,html
@@ -88,7 +107,7 @@ ccfx [flags]
 
 ## 出力ファイル
 
-`--format csv,json,md,html` で全フォーマットを指定した場合:
+`--format all` (または `--format csv,json,md,html`) で全フォーマットを指定した場合:
 
 ```
 ccfx-output/
