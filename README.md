@@ -65,6 +65,7 @@ ccfx version
 | `--project-filter PATH` | - | 特定プロジェクトのみ分析 |
 | `--date-from YYYY-MM-DD` | - | この日付以降に限定 |
 | `--date-to YYYY-MM-DD` | - | この日付以前に限定 |
+| `--timezone ZONE` | `UTC` | IANA タイムゾーン名 (例: `Asia/Tokyo`, `America/New_York`) |
 | `--redact-pii` | off | email・UUID をマスク |
 | `--verbose` | off | デバッグログ出力 |
 | `--version` | - | バージョン表示 |
@@ -81,6 +82,7 @@ ccfx version
 | `ccfx help formats` | CSV / JSON / Markdown / HTML 各フォーマットの詳細 |
 | `ccfx help report` | レポート 10 セクションの内容説明 |
 | `ccfx help security` | 認証情報の扱い、PII マスク、read-only 動作 |
+| `ccfx help timezone` | 使用可能な IANA タイムゾーン名の一覧 |
 | `ccfx help examples` | IR・内部監査・セキュリティレビュー等のワークフロー例 |
 
 ### 基本的な使い方
@@ -101,9 +103,14 @@ ccfx version
 # 特定期間に絞って PII マスク付きでレポート
 ./ccfx --format html --date-from 2026-05-01 --date-to 2026-05-31 --redact-pii
 
+# タイムスタンプを日本時間 (JST) で出力
+./ccfx --format all --timezone Asia/Tokyo --language ja
+
 # 特定セッションの会話全文を抽出
 ./ccfx --format json --session-filter "a1b2c3d4-e5f6-7890-abcd-ef1234567890" --extract-conversations
 ```
+
+`--timezone` を指定すると、全出力のタイムスタンプが変換され、カラム名にタイムゾーン略称が付きます (例: `Started At (JST)`)。
 
 ## 出力ファイル
 
@@ -282,9 +289,10 @@ ccfx/
 
 ### インシデント対応
 ```bash
-# 退職者の PC から Claude Code の使用状況を調査
+# 退職者の PC から Claude Code の使用状況を調査 (現地時間で表示)
 ./ccfx --path /mnt/evidence/Users/suspect/.claude \
        --format json,html \
+       --timezone Asia/Tokyo \
        --extract-conversations \
        --redact-pii
 ```
@@ -293,6 +301,7 @@ ccfx/
 ```bash
 # 今月の使用状況を CSV で取得し、スプレッドシートに取り込む
 ./ccfx --format csv \
+       --timezone Asia/Tokyo \
        --date-from 2026-05-01 --date-to 2026-05-31 \
        --language ja
 ```
