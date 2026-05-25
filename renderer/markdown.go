@@ -252,14 +252,14 @@ func formatTimeIn(t time.Time, tz *time.Location) string {
 	if t.IsZero() {
 		return "-"
 	}
-	return t.In(tz).Format("2006-01-02 15:04:05 MST")
+	return t.In(tz).Format("2006-01-02 15:04:05")
 }
 
 func formatDateIn(t time.Time, tz *time.Location) string {
 	if t.IsZero() {
 		return "-"
 	}
-	return t.In(tz).Format("2006-01-02 MST")
+	return t.In(tz).Format("2006-01-02")
 }
 
 func sortedKeys(m map[string]model.TokenSummary) []string {

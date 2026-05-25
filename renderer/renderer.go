@@ -40,6 +40,7 @@ func Render(cfg Config) (*Result, error) {
 	if tz == nil {
 		tz = time.UTC
 	}
+	dict = appendTZ(dict, tz)
 
 	if wantFmt["json"] {
 		files, err := writeJSON(cfg.Report, cfg.OutDir, tz)
@@ -74,6 +75,21 @@ func Render(cfg Config) (*Result, error) {
 	}
 
 	return result, nil
+}
+
+func appendTZ(dict Dict, tz *time.Location) Dict {
+	abbrev := time.Now().In(tz).Format("MST")
+	out := make(Dict, len(dict))
+	for k, v := range dict {
+		out[k] = v
+	}
+	timeKeys := []string{"started_at", "timestamp", "first_seen", "last_seen", "generated_at", "file_modified"}
+	for _, k := range timeKeys {
+		if v, ok := out[k]; ok {
+			out[k] = v + " (" + abbrev + ")"
+		}
+	}
+	return out
 }
 
 func fileSize(path string) int64 {
