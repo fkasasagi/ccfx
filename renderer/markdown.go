@@ -11,13 +11,15 @@ import (
 	"github.com/fkasasagi/ccfx/model"
 )
 
-func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict) ([]OutputFile, error) {
+func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict, tz *time.Location) ([]OutputFile, error) {
 	path := filepath.Join(outDir, "report.md")
+	ft := func(t time.Time) string { return formatTimeIn(t, tz) }
+	fd := func(t time.Time) string { return formatDateIn(t, tz) }
 
 	var b strings.Builder
 
 	b.WriteString(fmt.Sprintf("# %s\n\n", dict["title"]))
-	b.WriteString(fmt.Sprintf("- **%s**: %s\n", dict["generated_at"], report.Meta.GeneratedAt.Format(time.RFC3339)))
+	b.WriteString(fmt.Sprintf("- **%s**: %s\n", dict["generated_at"], report.Meta.GeneratedAt.In(tz).Format(time.RFC3339)))
 	b.WriteString(fmt.Sprintf("- **%s**: %s\n", dict["source_path"], report.Meta.SourcePath))
 	b.WriteString(fmt.Sprintf("- **%s**: %s\n", dict["tool_version"], report.Meta.ToolVersion))
 	b.WriteString(fmt.Sprintf("- **%s**: %s\n", dict["platform"], report.Meta.Platform))
@@ -26,8 +28,8 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict) ([]Ou
 	if !report.Meta.DateRange.Earliest.IsZero() {
 		b.WriteString(fmt.Sprintf("- **%s**: %s ~ %s\n",
 			dict["date_range"],
-			report.Meta.DateRange.Earliest.Format("2006-01-02"),
-			report.Meta.DateRange.Latest.Format("2006-01-02")))
+			report.Meta.DateRange.Earliest.In(tz).Format("2006-01-02"),
+			report.Meta.DateRange.Latest.In(tz).Format("2006-01-02")))
 	}
 	b.WriteString("\n---\n\n")
 
@@ -52,7 +54,7 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict) ([]Ou
 	b.WriteString("|---|---|---|---|---|---|\n")
 	for _, s := range report.Sessions {
 		b.WriteString(fmt.Sprintf("| `%.8s` | %s | %s | %.1f | %s | %d |\n",
-			s.SessionID, s.Project, formatTime(s.StartedAt),
+			s.SessionID, s.Project, ft(s.StartedAt),
 			s.DurationSec/60, s.Model, s.MessageCount))
 	}
 	b.WriteString("\n")
@@ -75,7 +77,7 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict) ([]Ou
 		summary = strings.ReplaceAll(summary, "|", "\\|")
 		summary = strings.ReplaceAll(summary, "\n", " ")
 		b.WriteString(fmt.Sprintf("| %s | %s | %s | %s |\n",
-			formatTime(e.Timestamp), e.EventType, e.Project, summary))
+			ft(e.Timestamp), e.EventType, e.Project, summary))
 	}
 	b.WriteString("\n")
 
@@ -88,7 +90,7 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict) ([]Ou
 	for _, p := range report.Projects {
 		b.WriteString(fmt.Sprintf("| %s | %d | %s | %s | %d |\n",
 			p.Path, p.SessionCount,
-			formatDate(p.FirstSeen), formatDate(p.LastSeen),
+			fd(p.FirstSeen), fd(p.LastSeen),
 			p.TotalMessages))
 	}
 	b.WriteString("\n")
@@ -147,7 +149,7 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict) ([]Ou
 		}
 		for _, fc := range changes {
 			b.WriteString(fmt.Sprintf("| %s | `%s` | %s | %s |\n",
-				formatTime(fc.Timestamp), fc.FilePath, fc.ToolName, fc.Operation))
+				ft(fc.Timestamp), fc.FilePath, fc.ToolName, fc.Operation))
 		}
 		b.WriteString("\n")
 	}
@@ -181,7 +183,7 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict) ([]Ou
 	c := report.Credentials
 	b.WriteString(fmt.Sprintf("- **%s**: %s\n", dict["file_exists"], boolStr(c.FileExists, dict)))
 	if c.FileExists {
-		b.WriteString(fmt.Sprintf("- **%s**: %s\n", dict["file_modified"], formatTime(c.FileModified)))
+		b.WriteString(fmt.Sprintf("- **%s**: %s\n", dict["file_modified"], ft(c.FileModified)))
 		b.WriteString(fmt.Sprintf("- **%s**: %d\n", dict["file_size"], c.FileSizeBytes))
 		b.WriteString(fmt.Sprintf("- **%s**: %s\n", dict["token_detected"], boolStr(c.TokenDetected, dict)))
 	}
@@ -206,7 +208,7 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict) ([]Ou
 					content = content[:500] + "..."
 				}
 				content = strings.ReplaceAll(content, "\n", " ")
-				b.WriteString(fmt.Sprintf("- [%s] %s%s\n", formatTime(msg.Timestamp), prefix, content))
+				b.WriteString(fmt.Sprintf("- [%s] %s%s\n", ft(msg.Timestamp), prefix, content))
 			}
 			b.WriteString("\n")
 		}
@@ -246,18 +248,18 @@ func formatInt64(n int64) string {
 	return strings.Join(parts, ",")
 }
 
-func formatTime(t time.Time) string {
+func formatTimeIn(t time.Time, tz *time.Location) string {
 	if t.IsZero() {
 		return "-"
 	}
-	return t.Format("2006-01-02 15:04:05")
+	return t.In(tz).Format("2006-01-02 15:04:05")
 }
 
-func formatDate(t time.Time) string {
+func formatDateIn(t time.Time, tz *time.Location) string {
 	if t.IsZero() {
 		return "-"
 	}
-	return t.Format("2006-01-02")
+	return t.In(tz).Format("2006-01-02")
 }
 
 func sortedKeys(m map[string]model.TokenSummary) []string {

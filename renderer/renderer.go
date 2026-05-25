@@ -2,15 +2,17 @@ package renderer
 
 import (
 	"os"
+	"time"
 
 	"github.com/fkasasagi/ccfx/model"
 )
 
 type Config struct {
-	Report  *model.ForensicReport
-	OutDir  string
-	Formats []string
-	Lang    string
+	Report   *model.ForensicReport
+	OutDir   string
+	Formats  []string
+	Lang     string
+	Timezone *time.Location
 }
 
 type Result struct {
@@ -34,9 +36,13 @@ func Render(cfg Config) (*Result, error) {
 	}
 
 	dict := getDict(cfg.Lang)
+	tz := cfg.Timezone
+	if tz == nil {
+		tz = time.UTC
+	}
 
 	if wantFmt["json"] {
-		files, err := writeJSON(cfg.Report, cfg.OutDir)
+		files, err := writeJSON(cfg.Report, cfg.OutDir, tz)
 		if err != nil {
 			return nil, err
 		}
@@ -44,7 +50,7 @@ func Render(cfg Config) (*Result, error) {
 	}
 
 	if wantFmt["csv"] {
-		files, err := writeCSV(cfg.Report, cfg.OutDir, dict)
+		files, err := writeCSV(cfg.Report, cfg.OutDir, dict, tz)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +58,7 @@ func Render(cfg Config) (*Result, error) {
 	}
 
 	if wantFmt["md"] {
-		files, err := writeMarkdown(cfg.Report, cfg.OutDir, dict)
+		files, err := writeMarkdown(cfg.Report, cfg.OutDir, dict, tz)
 		if err != nil {
 			return nil, err
 		}
@@ -60,7 +66,7 @@ func Render(cfg Config) (*Result, error) {
 	}
 
 	if wantFmt["html"] {
-		files, err := writeHTML(cfg.Report, cfg.OutDir, dict)
+		files, err := writeHTML(cfg.Report, cfg.OutDir, dict, tz)
 		if err != nil {
 			return nil, err
 		}

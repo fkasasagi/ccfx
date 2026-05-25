@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/fkasasagi/ccfx/model"
 )
@@ -15,12 +16,12 @@ type htmlData struct {
 	Dict   Dict
 }
 
-func writeHTML(report *model.ForensicReport, outDir string, dict Dict) ([]OutputFile, error) {
+func writeHTML(report *model.ForensicReport, outDir string, dict Dict, tz *time.Location) ([]OutputFile, error) {
 	path := filepath.Join(outDir, "report.html")
 
 	funcMap := template.FuncMap{
-		"fmtTime":  formatTime,
-		"fmtDate":  formatDate,
+		"fmtTime":  func(t time.Time) string { return formatTimeIn(t, tz) },
+		"fmtDate":  func(t time.Time) string { return formatDateIn(t, tz) },
 		"fmtInt64": formatInt64,
 		"fmtDur": func(sec float64) string {
 			return fmt.Sprintf("%.1f", sec/60)

@@ -42,6 +42,7 @@ func main() {
 	projectFilter := fs.String("project-filter", "", "Limit to specific project path")
 	dateFrom := fs.String("date-from", "", "Filter by date range start (YYYY-MM-DD)")
 	dateTo := fs.String("date-to", "", "Filter by date range end (YYYY-MM-DD)")
+	timezone := fs.String("timezone", "", "Timezone for timestamps: e.g. Asia/Tokyo, America/New_York (default: UTC)")
 	redactPII := fs.Bool("redact-pii", false, "Redact email addresses and UUIDs")
 	verbose := fs.Bool("verbose", false, "Enable debug logging")
 	showVersion := fs.Bool("version", false, "Print version and exit")
@@ -98,10 +99,22 @@ func main() {
 		dateToT = &t
 	}
 
+	var tz *time.Location
+	if *timezone != "" {
+		loc, err := time.LoadLocation(*timezone)
+		if err != nil {
+			log.Fatalf("invalid --timezone %q: %v\nRun 'ccfx help timezone' for available values.", *timezone, err)
+		}
+		tz = loc
+	}
+
 	if *verbose {
 		log.Printf("ccfx v%s starting", version)
 		log.Printf("source: %s", claudeDir)
 		log.Printf("formats: %v", formats)
+		if tz != nil {
+			log.Printf("timezone: %s", tz)
+		}
 	}
 
 	raw, err := collector.Collect(claudeDir, *verbose)
@@ -127,10 +140,11 @@ func main() {
 	report.Meta.Platform = runtime.GOOS + "/" + runtime.GOARCH
 
 	cfg := renderer.Config{
-		Report:  report,
-		OutDir:  *outDir,
-		Formats: formats,
-		Lang:    *lang,
+		Report:   report,
+		OutDir:   *outDir,
+		Formats:  formats,
+		Lang:     *lang,
+		Timezone: tz,
 	}
 
 	result, err := renderer.Render(cfg)
@@ -165,6 +179,8 @@ FLAGS
   --project-filter PATH    Analyze only the specified project
   --date-from YYYY-MM-DD   Include only activity on or after this date
   --date-to YYYY-MM-DD     Include only activity on or before this date
+  --timezone ZONE          Timezone for timestamps (default: UTC)
+                           Use IANA names: e.g. Asia/Tokyo, US/Eastern
   --redact-pii             Mask email addresses and UUIDs in output
   --verbose                Print debug information to stderr
   --version                Print version and exit
@@ -176,12 +192,14 @@ EXAMPLES
   ccfx --path /mnt/disk/.claude --format html   Analyze mounted evidence
   ccfx --date-from 2026-05-01 --redact-pii      Filter by date, mask PII
   ccfx --extract-conversations --format json     Include conversation text
+  ccfx --timezone Asia/Tokyo --format html       Timestamps in JST
 
 HELP TOPICS
   ccfx help artifacts      Files and directories analyzed by ccfx
   ccfx help formats        Output format details (CSV, JSON, Markdown, HTML)
   ccfx help report         Report sections and what they contain
   ccfx help security       Security considerations and credential handling
+  ccfx help timezone       Available timezone names (IANA Time Zone Database)
   ccfx help examples       More usage examples and forensic workflows
 `)
 }
@@ -196,11 +214,13 @@ func showTopicHelp(topic string) {
 		showReportHelp()
 	case "security":
 		showSecurityHelp()
+	case "timezone", "timezones", "tz":
+		showTimezoneHelp()
 	case "examples":
 		showExamplesHelp()
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown help topic: %q\n\n", topic)
-		fmt.Fprintf(os.Stderr, "Available topics: artifacts, formats, report, security, examples\n")
+		fmt.Fprintf(os.Stderr, "Available topics: artifacts, formats, report, security, timezone, examples\n")
 		os.Exit(1)
 	}
 }
@@ -365,6 +385,75 @@ func showSecurityHelp() {
     ccfx can analyze Claude Code data from another machine by pointing
     --path to a mounted disk or copied directory. No network access is
     required. The tool makes no API calls and has no internet dependency.
+`)
+}
+
+func showTimezoneHelp() {
+	fmt.Print(`TIMEZONE — Available timezone names (IANA Time Zone Database)
+
+  ccfx uses the IANA Time Zone Database (also known as the Olson database
+  or tz database). Specify a timezone with --timezone to convert all
+  timestamps in the output.
+
+  Default: UTC (no conversion)
+
+  COMMON TIMEZONES
+
+  Asia
+  ────────────────────────────────────────────────
+  Asia/Tokyo              JST  (UTC+9)    Japan
+  Asia/Shanghai           CST  (UTC+8)    China
+  Asia/Kolkata            IST  (UTC+5:30) India
+  Asia/Singapore          SGT  (UTC+8)    Singapore
+  Asia/Seoul              KST  (UTC+9)    South Korea
+  Asia/Taipei             CST  (UTC+8)    Taiwan
+  Asia/Hong_Kong          HKT  (UTC+8)    Hong Kong
+  Asia/Bangkok            ICT  (UTC+7)    Thailand
+  Asia/Dubai              GST  (UTC+4)    UAE
+  Asia/Jerusalem          IST  (UTC+2/3)  Israel
+
+  Americas
+  ────────────────────────────────────────────────
+  America/New_York        EST/EDT (UTC-5/-4)  US Eastern
+  America/Chicago         CST/CDT (UTC-6/-5)  US Central
+  America/Denver          MST/MDT (UTC-7/-6)  US Mountain
+  America/Los_Angeles     PST/PDT (UTC-8/-7)  US Pacific
+  America/Toronto         EST/EDT (UTC-5/-4)  Canada Eastern
+  America/Vancouver       PST/PDT (UTC-8/-7)  Canada Pacific
+  America/Sao_Paulo       BRT     (UTC-3)     Brazil
+
+  Europe
+  ────────────────────────────────────────────────
+  Europe/London           GMT/BST (UTC+0/+1)  UK
+  Europe/Berlin           CET/CEST(UTC+1/+2)  Germany
+  Europe/Paris            CET/CEST(UTC+1/+2)  France
+  Europe/Moscow           MSK     (UTC+3)     Russia
+  Europe/Zurich           CET/CEST(UTC+1/+2)  Switzerland
+
+  Oceania
+  ────────────────────────────────────────────────
+  Australia/Sydney        AEST/AEDT(UTC+10/+11)  Australia Eastern
+  Australia/Perth         AWST     (UTC+8)       Australia Western
+  Pacific/Auckland        NZST/NZDT(UTC+12/+13)  New Zealand
+
+  Shortcuts
+  ────────────────────────────────────────────────
+  UTC                     Coordinated Universal Time
+  US/Eastern              Alias for America/New_York
+  US/Central              Alias for America/Chicago
+  US/Mountain             Alias for America/Denver
+  US/Pacific              Alias for America/Los_Angeles
+
+  EXAMPLES
+    ccfx --timezone Asia/Tokyo --format all
+    ccfx --timezone America/New_York --format html
+    ccfx --timezone UTC                              (default, explicit)
+
+  NOTES
+  - Daylight saving time is handled automatically.
+  - The full list depends on your OS. On Linux, see /usr/share/zoneinfo/.
+  - On Windows, Go embeds timezone data so all names work regardless of OS.
+  - If a timezone name is invalid, ccfx exits with an error message.
 `)
 }
 

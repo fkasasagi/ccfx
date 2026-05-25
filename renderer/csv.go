@@ -7,18 +7,19 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/fkasasagi/ccfx/model"
 )
 
 var bom = []byte{0xEF, 0xBB, 0xBF}
 
-func writeCSV(report *model.ForensicReport, outDir string, dict Dict) ([]OutputFile, error) {
+func writeCSV(report *model.ForensicReport, outDir string, dict Dict, tz *time.Location) ([]OutputFile, error) {
 	var files []OutputFile
 
 	writers := []struct {
 		name string
-		fn   func(*model.ForensicReport, string, Dict) error
+		fn   func(*model.ForensicReport, string, Dict, *time.Location) error
 	}{
 		{"sessions.csv", writeSessionsCSV},
 		{"timeline.csv", writeTimelineCSV},
@@ -29,7 +30,7 @@ func writeCSV(report *model.ForensicReport, outDir string, dict Dict) ([]OutputF
 
 	for _, w := range writers {
 		path := filepath.Join(outDir, w.name)
-		if err := w.fn(report, path, dict); err != nil {
+		if err := w.fn(report, path, dict, tz); err != nil {
 			return nil, fmt.Errorf("%s: %w", w.name, err)
 		}
 		files = append(files, OutputFile{Path: path, Size: fileSize(path)})
@@ -50,7 +51,7 @@ func newCSVFile(path string) (*os.File, *csv.Writer, error) {
 	return f, csv.NewWriter(f), nil
 }
 
-func writeSessionsCSV(report *model.ForensicReport, path string, dict Dict) error {
+func writeSessionsCSV(report *model.ForensicReport, path string, dict Dict, tz *time.Location) error {
 	f, w, err := newCSVFile(path)
 	if err != nil {
 		return err
@@ -68,7 +69,7 @@ func writeSessionsCSV(report *model.ForensicReport, path string, dict Dict) erro
 		w.Write([]string{
 			s.SessionID,
 			s.Project,
-			formatTime(s.StartedAt),
+			formatTimeIn(s.StartedAt, tz),
 			fmt.Sprintf("%.1f", s.DurationSec/60),
 			s.Version,
 			s.Model,
@@ -83,7 +84,7 @@ func writeSessionsCSV(report *model.ForensicReport, path string, dict Dict) erro
 	return w.Error()
 }
 
-func writeTimelineCSV(report *model.ForensicReport, path string, dict Dict) error {
+func writeTimelineCSV(report *model.ForensicReport, path string, dict Dict, tz *time.Location) error {
 	f, w, err := newCSVFile(path)
 	if err != nil {
 		return err
@@ -97,7 +98,7 @@ func writeTimelineCSV(report *model.ForensicReport, path string, dict Dict) erro
 
 	for _, e := range report.Timeline {
 		w.Write([]string{
-			formatTime(e.Timestamp),
+			formatTimeIn(e.Timestamp, tz),
 			e.SessionID,
 			e.Project,
 			e.EventType,
@@ -110,7 +111,7 @@ func writeTimelineCSV(report *model.ForensicReport, path string, dict Dict) erro
 	return w.Error()
 }
 
-func writeToolUsageCSV(report *model.ForensicReport, path string, dict Dict) error {
+func writeToolUsageCSV(report *model.ForensicReport, path string, dict Dict, tz *time.Location) error {
 	f, w, err := newCSVFile(path)
 	if err != nil {
 		return err
@@ -130,7 +131,7 @@ func writeToolUsageCSV(report *model.ForensicReport, path string, dict Dict) err
 	return w.Error()
 }
 
-func writeFileChangesCSV(report *model.ForensicReport, path string, dict Dict) error {
+func writeFileChangesCSV(report *model.ForensicReport, path string, dict Dict, tz *time.Location) error {
 	f, w, err := newCSVFile(path)
 	if err != nil {
 		return err
@@ -144,7 +145,7 @@ func writeFileChangesCSV(report *model.ForensicReport, path string, dict Dict) e
 
 	for _, fc := range report.FileChanges {
 		w.Write([]string{
-			formatTime(fc.Timestamp),
+			formatTimeIn(fc.Timestamp, tz),
 			fc.SessionID,
 			fc.FilePath,
 			fc.ToolName,
@@ -155,7 +156,7 @@ func writeFileChangesCSV(report *model.ForensicReport, path string, dict Dict) e
 	return w.Error()
 }
 
-func writeTokenUsageCSV(report *model.ForensicReport, path string, dict Dict) error {
+func writeTokenUsageCSV(report *model.ForensicReport, path string, dict Dict, tz *time.Location) error {
 	f, w, err := newCSVFile(path)
 	if err != nil {
 		return err
