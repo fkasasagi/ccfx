@@ -157,7 +157,7 @@ USAGE
 
 FLAGS
   --path PATH              Path to ~/.claude/ directory (auto-detect if omitted)
-  --format FORMATS         Output formats: csv,json,md,html (default: json)
+  --format FORMATS         Output formats: csv,json,md,html,all (default: json)
   --output DIR             Output directory (default: ./ccfx-output)
   --language en|ja         Report language (default: en)
   --extract-conversations  Include full conversation content in report
@@ -285,7 +285,7 @@ func showFormatsHelp() {
 EXAMPLES
   ccfx --format json                 JSON only (default)
   ccfx --format csv,html             CSV tables + visual HTML report
-  ccfx --format csv,json,md,html     Everything
+  ccfx --format all                  All formats (csv,json,md,html)
 `)
 }
 
@@ -426,6 +426,9 @@ func showExamplesHelp() {
 }
 
 func parseFormats(s string) []string {
+	if strings.TrimSpace(strings.ToLower(s)) == "all" {
+		return []string{"csv", "json", "md", "html"}
+	}
 	valid := map[string]bool{"csv": true, "json": true, "md": true, "html": true}
 	var out []string
 	for _, f := range strings.Split(s, ",") {
