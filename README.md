@@ -80,7 +80,7 @@ ccfx version
 | `ccfx help` | メインヘルプ (フラグ一覧、使用例、トピック一覧) |
 | `ccfx help artifacts` | 解析対象ファイルの場所・形式・抽出情報 |
 | `ccfx help formats` | CSV / JSON / Markdown / HTML 各フォーマットの詳細 |
-| `ccfx help report` | レポート 10 セクションの内容説明 |
+| `ccfx help report` | レポート 13 セクションの内容説明 |
 | `ccfx help security` | 認証情報の扱い、PII マスク、read-only 動作 |
 | `ccfx help timezone` | 使用可能な IANA タイムゾーン名の一覧 |
 | `ccfx help examples` | IR・内部監査・セキュリティレビュー等のワークフロー例 |
@@ -119,13 +119,14 @@ ccfx version
 ```
 ccfx-output/
 ├── report.json          # 完全なレポート (構造化 JSON)
-├── report.md            # Markdown レポート (10 セクション)
+├── report.md            # Markdown レポート (13 セクション)
 ├── report.html          # 自己完結型 HTML (CSS 埋め込み、ダークテーマ)
 ├── sessions.csv         # セッション一覧
 ├── timeline.csv         # アクティビティタイムライン
 ├── tool_usage.csv       # ツール使用統計
 ├── file_changes.csv     # ファイル変更記録
-└── token_usage.csv      # 日別トークン消費量
+├── token_usage.csv      # 日別トークン消費量
+└── history.csv          # コマンド入力履歴
 ```
 
 CSV には UTF-8 BOM が付いているため、Windows Excel で文字化けせずに開けます。
@@ -176,6 +177,20 @@ CSV には UTF-8 BOM が付いているため、Windows Excel で文字化けせ
     "file_modified_at": "2026-05-25T20:54:23Z",
     "file_size_bytes": 470,
     "oauth_token_detected": true
+  },
+  "command_history": [
+    { "display": "/plan", "timestamp": "2026-05-12T13:16:00Z", "project": "/home/user/myproject", "sessionId": "a1b2c3d4-..." }
+  ],
+  "file_history_stats": {
+    "session_count": 12,
+    "total_file_versions": 270
+  },
+  "misc_stats": {
+    "shell_snapshots": 3,
+    "paste_cache_files": 1,
+    "task_sessions": 4,
+    "plan_files": 4,
+    "custom_commands": 1
   }
 }
 ```
@@ -202,6 +217,16 @@ Date,Input Tokens,Output Tokens,Cache Creation,Cache Read
 2026-05-15,94002,667665,2808707,27135615
 2026-05-16,4737,619171,1650754,167553266
 2026-05-20,178,81111,1043877,16517713
+```
+
+### CSV - history.csv
+
+```
+Timestamp (UTC),Session ID,Project,Command
+2026-05-12 13:16:00,11112222-3333-4444-5555-666677778888,/home/user/myproject,/plan
+2026-05-12 13:17:07,11112222-3333-4444-5555-666677778888,/home/user/myproject,/effort
+2026-05-12 13:18:32,11112222-3333-4444-5555-666677778888,/home/user/myproject,fix the login bug
+2026-05-13 09:42:15,c4d5e6f7-a8b9-0123-cdef-456789abcdef,/home/user/api,add retry logic to the HTTP client
 ```
 
 ### Markdown (冒頭)
@@ -245,7 +270,10 @@ Date,Input Tokens,Output Tokens,Cache Creation,Cache Read
 | 7 | File Modifications | Edit/Write ツールによるファイル変更記録 |
 | 8 | Permission & Security | deny/allow ルール、フック定義、セッション別パーミッションモード |
 | 9 | Credential Discovery | `.credentials.json` の存在検出 (トークン値は読みません) |
-| 10 | Conversations | 会話全文 (`--extract-conversations` 指定時のみ) |
+| 10 | Command History | `history.jsonl` のコマンド入力履歴 (タイムスタンプ、セッション、プロジェクト) |
+| 11 | File History Statistics | `file-history/` のファイル編集セッション数・バージョン総数 |
+| 12 | Auxiliary Artifact Statistics | shell-snapshots, paste-cache, tasks, plans, custom-commands の件数 |
+| 13 | Conversations | 会話全文 (`--extract-conversations` 指定時のみ) |
 
 ## セキュリティに関する注意
 

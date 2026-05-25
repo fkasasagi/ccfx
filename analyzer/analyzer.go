@@ -41,6 +41,10 @@ func Analyze(raw *model.RawData, opts *Options) *model.ForensicReport {
 		report.Credentials = *raw.CredentialInfo
 	}
 
+	report.CommandHistory = filterHistory(raw.HistoryEntries, opts)
+	report.FileHistoryStats = raw.FileHistStats
+	report.MiscStats = raw.MiscStats
+
 	if opts.ExtractConversations {
 		report.Conversations = extractConversations(raw, projectMap, opts)
 	}
@@ -151,6 +155,26 @@ func redactUUID(uuid string) string {
 	return "***"
 }
 
+func filterHistory(entries []model.HistoryEntry, opts *Options) []model.HistoryEntry {
+	if len(entries) == 0 {
+		return nil
+	}
+	var result []model.HistoryEntry
+	for _, e := range entries {
+		if opts.SessionFilter != "" && e.SessionID != opts.SessionFilter {
+			continue
+		}
+		if opts.ProjectFilter != "" && e.Project != opts.ProjectFilter {
+			continue
+		}
+		if !matchesDateFilter(e.Timestamp, opts) {
+			continue
+		}
+		result = append(result, e)
+	}
+	return result
+}
+
 func matchesFilter(ts model.TranscriptSession, projectMap map[string]string, opts *Options) bool {
 	if opts.SessionFilter != "" && ts.SessionID != opts.SessionFilter {
 		return false
@@ -254,7 +278,10 @@ func buildSessions(raw *model.RawData, projectMap map[string]string, opts *Optio
 			}
 		}
 		if s.DurationSec == 0 && !s.UpdatedAt.IsZero() && !s.StartedAt.IsZero() {
-			s.DurationSec = s.UpdatedAt.Sub(s.StartedAt).Seconds()
+			dur := s.UpdatedAt.Sub(s.StartedAt).Seconds()
+			if dur > 0 {
+				s.DurationSec = dur
+			}
 		}
 	}
 

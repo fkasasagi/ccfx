@@ -23,6 +23,13 @@ type rawSessionFile struct {
 	Name       string `json:"name"`
 }
 
+func safeUnixMilli(ms int64) time.Time {
+	if ms <= 0 {
+		return time.Time{}
+	}
+	return time.UnixMilli(ms)
+}
+
 func parseSessions(dir string) ([]model.SessionFile, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -46,8 +53,8 @@ func parseSessions(dir string) ([]model.SessionFile, error) {
 			PID:        raw.PID,
 			SessionID:  raw.SessionID,
 			CWD:        raw.CWD,
-			StartedAt:  time.UnixMilli(raw.StartedAt),
-			UpdatedAt:  time.UnixMilli(raw.UpdatedAt),
+			StartedAt:  safeUnixMilli(raw.StartedAt),
+			UpdatedAt:  safeUnixMilli(raw.UpdatedAt),
 			Version:    raw.Version,
 			Entrypoint: raw.Entrypoint,
 			Kind:       raw.Kind,

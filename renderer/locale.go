@@ -83,6 +83,17 @@ var dictEN = Dict{
 	"no":                   "No",
 	"title_label":          "Title",
 	"date":                 "Date",
+	"command_history":      "Command History",
+	"display":              "Command",
+	"file_history":         "File History Statistics",
+	"file_hist_sessions":   "Sessions with File Edits",
+	"file_hist_versions":   "Total File Versions",
+	"misc_stats":           "Auxiliary Artifact Statistics",
+	"shell_snapshots":      "Shell Snapshots",
+	"paste_cache":          "Paste Cache Files",
+	"task_sessions":        "Task Sessions",
+	"plan_files":           "Plan Files",
+	"custom_commands":      "Custom Commands",
 }
 
 var dictJA = Dict{
@@ -159,4 +170,15 @@ var dictJA = Dict{
 	"no":                   "いいえ",
 	"title_label":          "タイトル",
 	"date":                 "日付",
+	"command_history":      "コマンド履歴",
+	"display":              "コマンド",
+	"file_history":         "ファイル編集履歴統計",
+	"file_hist_sessions":   "ファイル編集セッション数",
+	"file_hist_versions":   "ファイルバージョン総数",
+	"misc_stats":           "補助アーティファクト統計",
+	"shell_snapshots":      "シェルスナップショット",
+	"paste_cache":          "ペーストキャッシュ",
+	"task_sessions":        "タスクセッション",
+	"plan_files":           "プランファイル",
+	"custom_commands":      "カスタムコマンド",
 }

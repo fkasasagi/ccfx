@@ -228,7 +228,7 @@ func showTopicHelp(topic string) {
 func showArtifactsHelp() {
 	fmt.Print(`ARTIFACTS — Files and directories analyzed by ccfx
 
-  Claude Code stores data under ~/.claude/ (Windows: %%USERPROFILE%%\.claude\).
+  Claude Code stores data under ~/.claude/ (Windows: USERPROFILE\.claude\).
   ccfx reads these files in read-only mode. Nothing is modified.
 
   File / Directory                             What ccfx extracts
@@ -287,10 +287,11 @@ func showFormatsHelp() {
            tool_usage.csv           Tool name, call count, session count
            file_changes.csv         Files modified via Edit/Write tools
            token_usage.csv          Daily token consumption breakdown
+           history.csv              User command inputs from history.jsonl
                                     All CSV files include UTF-8 BOM for
                                     Windows Excel compatibility.
 
-  md       report.md                10-section Markdown report. Suitable for
+  md       report.md                13-section Markdown report. Suitable for
                                     viewing on GitHub, in editors, or
                                     converting to PDF via pandoc.
 
@@ -348,7 +349,20 @@ func showReportHelp() {
                                  size and modification date. Token values
                                  are NEVER read or included.
 
-  10  Conversations              Full conversation text (user + assistant).
+  10  Command History            User-typed commands from history.jsonl.
+                                 Timestamp, session ID, project, and the
+                                 command string. Independent corroborating
+                                 record of user activity.
+
+  11  File History Statistics    Number of sessions with file edits and
+                                 total file versions stored in file-history/.
+                                 Indicates scope of code modifications.
+
+  12  Auxiliary Artifact Stats   Counts of shell-snapshots, paste-cache,
+                                 tasks, plans, and custom-commands.
+                                 Shows breadth of Claude Code usage.
+
+  13  Conversations              Full conversation text (user + assistant).
                                  Only included with --extract-conversations.
                                  Can produce very large output.
 `)

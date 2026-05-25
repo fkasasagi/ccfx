@@ -13,6 +13,9 @@ type ForensicReport struct {
 	FileChanges   []FileChange       `json:"file_changes"`
 	Permissions   PermissionReport   `json:"permissions"`
 	Credentials   CredentialReport   `json:"credentials"`
+	CommandHistory []HistoryEntry    `json:"command_history,omitempty"`
+	FileHistoryStats FileHistoryStats `json:"file_history_stats"`
+	MiscStats     MiscStats          `json:"misc_stats"`
 	Conversations []Conversation     `json:"conversations,omitempty"`
 }
 
@@ -240,14 +243,14 @@ type SettingsData struct {
 }
 
 type FileHistoryStats struct {
-	SessionCount     int
-	TotalFileVersions int
+	SessionCount      int `json:"session_count"`
+	TotalFileVersions int `json:"total_file_versions"`
 }
 
 type MiscStats struct {
-	ShellSnapshots int
-	PasteCacheFiles int
-	TaskSessions    int
-	PlanFiles       int
-	CustomCommands  int
+	ShellSnapshots  int `json:"shell_snapshots"`
+	PasteCacheFiles int `json:"paste_cache_files"`
+	TaskSessions    int `json:"task_sessions"`
+	PlanFiles       int `json:"plan_files"`
+	CustomCommands  int `json:"custom_commands"`
 }

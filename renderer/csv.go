@@ -26,6 +26,7 @@ func writeCSV(report *model.ForensicReport, outDir string, dict Dict, tz *time.L
 		{"tool_usage.csv", writeToolUsageCSV},
 		{"file_changes.csv", writeFileChangesCSV},
 		{"token_usage.csv", writeTokenUsageCSV},
+		{"history.csv", writeHistoryCSV},
 	}
 
 	for _, w := range writers {
@@ -182,6 +183,29 @@ func writeTokenUsageCSV(report *model.ForensicReport, path string, dict Dict, tz
 			strconv.FormatInt(t.OutputTokens, 10),
 			strconv.FormatInt(t.CacheCreationTokens, 10),
 			strconv.FormatInt(t.CacheReadTokens, 10),
+		})
+	}
+	w.Flush()
+	return w.Error()
+}
+
+func writeHistoryCSV(report *model.ForensicReport, path string, dict Dict, tz *time.Location) error {
+	f, w, err := newCSVFile(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	w.Write([]string{
+		dict["timestamp"], dict["session_id"], dict["project"], dict["display"],
+	})
+
+	for _, h := range report.CommandHistory {
+		w.Write([]string{
+			formatTimeIn(h.Timestamp, tz),
+			h.SessionID,
+			h.Project,
+			h.Display,
 		})
 	}
 	w.Flush()

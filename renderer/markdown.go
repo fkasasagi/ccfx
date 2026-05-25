@@ -189,9 +189,45 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict, tz *t
 	}
 	b.WriteString("\n")
 
+	// Command History
+	if len(report.CommandHistory) > 0 {
+		b.WriteString(fmt.Sprintf("## 10. %s\n\n", dict["command_history"]))
+		hist := report.CommandHistory
+		if len(hist) > 100 {
+			b.WriteString(fmt.Sprintf("*(%d entries total, showing last 100)*\n\n", len(hist)))
+			hist = hist[len(hist)-100:]
+		}
+		b.WriteString(fmt.Sprintf("| %s | %s | %s | %s |\n",
+			dict["timestamp"], dict["session_id"], dict["project"], dict["display"]))
+		b.WriteString("|---|---|---|---|\n")
+		for _, h := range hist {
+			cmd := h.Display
+			if len(cmd) > 80 {
+				cmd = cmd[:80] + "..."
+			}
+			cmd = strings.ReplaceAll(cmd, "|", "\\|")
+			cmd = strings.ReplaceAll(cmd, "\n", " ")
+			b.WriteString(fmt.Sprintf("| %s | `%.8s` | %s | %s |\n",
+				ft(h.Timestamp), h.SessionID, h.Project, cmd))
+		}
+		b.WriteString("\n")
+	}
+
+	// File History & Misc Stats
+	b.WriteString(fmt.Sprintf("## 11. %s\n\n", dict["file_history"]))
+	b.WriteString(fmt.Sprintf("- **%s**: %d\n", dict["file_hist_sessions"], report.FileHistoryStats.SessionCount))
+	b.WriteString(fmt.Sprintf("- **%s**: %d\n\n", dict["file_hist_versions"], report.FileHistoryStats.TotalFileVersions))
+
+	b.WriteString(fmt.Sprintf("## 12. %s\n\n", dict["misc_stats"]))
+	b.WriteString(fmt.Sprintf("- **%s**: %d\n", dict["shell_snapshots"], report.MiscStats.ShellSnapshots))
+	b.WriteString(fmt.Sprintf("- **%s**: %d\n", dict["paste_cache"], report.MiscStats.PasteCacheFiles))
+	b.WriteString(fmt.Sprintf("- **%s**: %d\n", dict["task_sessions"], report.MiscStats.TaskSessions))
+	b.WriteString(fmt.Sprintf("- **%s**: %d\n", dict["plan_files"], report.MiscStats.PlanFiles))
+	b.WriteString(fmt.Sprintf("- **%s**: %d\n\n", dict["custom_commands"], report.MiscStats.CustomCommands))
+
 	// Conversations
 	if len(report.Conversations) > 0 {
-		b.WriteString(fmt.Sprintf("## 10. %s\n\n", dict["conversations"]))
+		b.WriteString(fmt.Sprintf("## 13. %s\n\n", dict["conversations"]))
 		for _, conv := range report.Conversations {
 			title := conv.Title
 			if title == "" {

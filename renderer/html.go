@@ -296,8 +296,39 @@ code{background:var(--card);padding:2px 6px;border-radius:3px;font-size:.85rem;c
 {{end}}
 </div>
 
+{{if .Report.CommandHistory}}
+<h2>10. {{.Dict.command_history}}</h2>
+<div class="scroll-table">
+<table>
+<thead><tr>
+<th>{{.Dict.timestamp}}</th><th>{{.Dict.session_id}}</th><th>{{.Dict.project}}</th><th>{{.Dict.display}}</th>
+</tr></thead>
+<tbody>
+{{range .Report.CommandHistory}}<tr>
+<td>{{fmtTime .Timestamp}}</td><td><code>{{.SessionID}}</code></td><td>{{.Project}}</td><td>{{truncate (sanitize .Display) 120}}</td>
+</tr>{{end}}
+</tbody>
+</table>
+</div>
+{{end}}
+
+<h2>11. {{.Dict.file_history}}</h2>
+<div class="card">
+<div class="field"><span class="field-label">{{.Dict.file_hist_sessions}}</span><span class="field-value">{{.Report.FileHistoryStats.SessionCount}}</span></div>
+<div class="field"><span class="field-label">{{.Dict.file_hist_versions}}</span><span class="field-value">{{.Report.FileHistoryStats.TotalFileVersions}}</span></div>
+</div>
+
+<h2>12. {{.Dict.misc_stats}}</h2>
+<div class="card">
+<div class="field"><span class="field-label">{{.Dict.shell_snapshots}}</span><span class="field-value">{{.Report.MiscStats.ShellSnapshots}}</span></div>
+<div class="field"><span class="field-label">{{.Dict.paste_cache}}</span><span class="field-value">{{.Report.MiscStats.PasteCacheFiles}}</span></div>
+<div class="field"><span class="field-label">{{.Dict.task_sessions}}</span><span class="field-value">{{.Report.MiscStats.TaskSessions}}</span></div>
+<div class="field"><span class="field-label">{{.Dict.plan_files}}</span><span class="field-value">{{.Report.MiscStats.PlanFiles}}</span></div>
+<div class="field"><span class="field-label">{{.Dict.custom_commands}}</span><span class="field-value">{{.Report.MiscStats.CustomCommands}}</span></div>
+</div>
+
 {{if .Report.Conversations}}
-<h2>10. {{.Dict.conversations}}</h2>
+<h2>13. {{.Dict.conversations}}</h2>
 {{range .Report.Conversations}}
 <details>
 <summary>{{if .Title}}{{.Title}}{{else}}{{.SessionID}}{{end}} ({{.Project}})</summary>

@@ -36,9 +36,13 @@ func parseHistory(path string) ([]model.HistoryEntry, error) {
 		if err := json.Unmarshal(line, &raw); err != nil {
 			continue
 		}
+		var ts time.Time
+		if raw.Timestamp > 0 {
+			ts = time.UnixMilli(raw.Timestamp)
+		}
 		entries = append(entries, model.HistoryEntry{
 			Display:   raw.Display,
-			Timestamp: time.UnixMilli(raw.Timestamp),
+			Timestamp: ts,
 			Project:   raw.Project,
 			SessionID: raw.SessionID,
 		})

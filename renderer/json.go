@@ -77,6 +77,15 @@ func convertTimezones(report *model.ForensicReport, tz *time.Location) *model.Fo
 	}
 	r.Projects = projects
 
+	if len(r.CommandHistory) > 0 {
+		hist := make([]model.HistoryEntry, len(r.CommandHistory))
+		for i, h := range r.CommandHistory {
+			h.Timestamp = h.Timestamp.In(tz)
+			hist[i] = h
+		}
+		r.CommandHistory = hist
+	}
+
 	if len(r.Conversations) > 0 {
 		convs := make([]model.Conversation, len(r.Conversations))
 		for i, c := range r.Conversations {
