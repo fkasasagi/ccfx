@@ -70,11 +70,7 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict, tz *t
 		dict["timestamp"], dict["event_type"], dict["project"], dict["summary"]))
 	b.WriteString("|---|---|---|---|\n")
 	for _, e := range tl {
-		summary := e.Summary
-		if len(summary) > 80 {
-			summary = summary[:80] + "..."
-		}
-		summary = strings.ReplaceAll(summary, "|", "\\|")
+		summary := strings.ReplaceAll(e.Summary, "|", "\\|")
 		summary = strings.ReplaceAll(summary, "\n", " ")
 		b.WriteString(fmt.Sprintf("| %s | %s | %s | %s |\n",
 			ft(e.Timestamp), e.EventType, e.Project, summary))
