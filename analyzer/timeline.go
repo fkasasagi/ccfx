@@ -23,16 +23,12 @@ func buildTimeline(raw *model.RawData, projectMap map[string]string, opts *Optio
 
 			switch msg.Role {
 			case "user":
-				summary := msg.Content
-				if len(summary) > 120 {
-					summary = summary[:120] + "..."
-				}
 				entries = append(entries, model.TimelineEntry{
 					Timestamp: msg.Timestamp,
 					SessionID: ts.SessionID,
 					Project:   proj,
 					EventType: "user_message",
-					Summary:   summary,
+					Summary:   msg.Content,
 					GitBranch: ts.GitBranch,
 				})
 
@@ -49,16 +45,12 @@ func buildTimeline(raw *model.RawData, projectMap map[string]string, opts *Optio
 					})
 				}
 				if len(msg.ToolCalls) == 0 {
-					summary := msg.Content
-					if len(summary) > 120 {
-						summary = summary[:120] + "..."
-					}
 					entries = append(entries, model.TimelineEntry{
 						Timestamp: msg.Timestamp,
 						SessionID: ts.SessionID,
 						Project:   proj,
 						EventType: "assistant_response",
-						Summary:   summary,
+						Summary:   msg.Content,
 						Model:     msg.Model,
 						GitBranch: ts.GitBranch,
 					})
