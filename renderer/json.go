@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -8,6 +9,9 @@ import (
 
 	"github.com/fkasasagi/ccfx/model"
 )
+
+var zeroTimeJSON = []byte(`"0001-01-01T00:00:00Z"`)
+var nullJSON = []byte(`null`)
 
 func writeJSON(report *model.ForensicReport, outDir string, tz *time.Location) ([]OutputFile, error) {
 	path := filepath.Join(outDir, "report.json")
@@ -18,6 +22,8 @@ func writeJSON(report *model.ForensicReport, outDir string, tz *time.Location) (
 	if err != nil {
 		return nil, err
 	}
+
+	data = bytes.ReplaceAll(data, zeroTimeJSON, nullJSON)
 
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return nil, err
@@ -34,12 +40,18 @@ func convertTimezones(report *model.ForensicReport, tz *time.Location) *model.Fo
 	r := *report
 
 	r.Meta.GeneratedAt = r.Meta.GeneratedAt.In(tz)
-	r.Meta.DateRange.Earliest = r.Meta.DateRange.Earliest.In(tz)
-	r.Meta.DateRange.Latest = r.Meta.DateRange.Latest.In(tz)
+	if !r.Meta.DateRange.Earliest.IsZero() {
+		r.Meta.DateRange.Earliest = r.Meta.DateRange.Earliest.In(tz)
+	}
+	if !r.Meta.DateRange.Latest.IsZero() {
+		r.Meta.DateRange.Latest = r.Meta.DateRange.Latest.In(tz)
+	}
 
 	sessions := make([]model.Session, len(r.Sessions))
 	for i, s := range r.Sessions {
-		s.StartedAt = s.StartedAt.In(tz)
+		if !s.StartedAt.IsZero() {
+			s.StartedAt = s.StartedAt.In(tz)
+		}
 		if !s.UpdatedAt.IsZero() {
 			s.UpdatedAt = s.UpdatedAt.In(tz)
 		}
@@ -49,14 +61,18 @@ func convertTimezones(report *model.ForensicReport, tz *time.Location) *model.Fo
 
 	timeline := make([]model.TimelineEntry, len(r.Timeline))
 	for i, t := range r.Timeline {
-		t.Timestamp = t.Timestamp.In(tz)
+		if !t.Timestamp.IsZero() {
+			t.Timestamp = t.Timestamp.In(tz)
+		}
 		timeline[i] = t
 	}
 	r.Timeline = timeline
 
 	fileChanges := make([]model.FileChange, len(r.FileChanges))
 	for i, fc := range r.FileChanges {
-		fc.Timestamp = fc.Timestamp.In(tz)
+		if !fc.Timestamp.IsZero() {
+			fc.Timestamp = fc.Timestamp.In(tz)
+		}
 		fileChanges[i] = fc
 	}
 	r.FileChanges = fileChanges
@@ -80,7 +96,9 @@ func convertTimezones(report *model.ForensicReport, tz *time.Location) *model.Fo
 	if len(r.CommandHistory) > 0 {
 		hist := make([]model.HistoryEntry, len(r.CommandHistory))
 		for i, h := range r.CommandHistory {
-			h.Timestamp = h.Timestamp.In(tz)
+			if !h.Timestamp.IsZero() {
+				h.Timestamp = h.Timestamp.In(tz)
+			}
 			hist[i] = h
 		}
 		r.CommandHistory = hist
