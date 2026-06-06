@@ -34,16 +34,17 @@ func main() {
 
 	fs := flag.NewFlagSet("ccfx", flag.ExitOnError)
 	path := fs.String("path", "", "Path to ~/.claude/ directory (auto-detect if omitted)")
-	formatStr := fs.String("format", "json", "Output formats: csv,json,md,html (comma-separated)")
+	formatStr := fs.String("format", "all", "Output formats: csv,json,md,html,all (comma-separated)")
 	outDir := fs.String("output", "./ccfx-output", "Output directory")
 	lang := fs.String("language", "en", "Report language: en or ja")
-	extractConv := fs.Bool("extract-conversations", false, "Include full conversation content")
+	extractConv := fs.Bool("extract-conversations", true, "Include full conversation content")
 	sessionFilter := fs.String("session-filter", "", "Limit to specific session ID")
 	projectFilter := fs.String("project-filter", "", "Limit to specific project path")
 	dateFrom := fs.String("date-from", "", "Filter by date range start (YYYY-MM-DD)")
 	dateTo := fs.String("date-to", "", "Filter by date range end (YYYY-MM-DD)")
 	timezone := fs.String("timezone", "", "Timezone for timestamps: e.g. Asia/Tokyo, America/New_York (default: UTC)")
 	redactPII := fs.Bool("redact-pii", false, "Redact email addresses and UUIDs")
+	force := fs.Bool("force", false, "Overwrite existing output (otherwise ccfx refuses if any exists)")
 	verbose := fs.Bool("verbose", false, "Enable debug logging")
 	showVersion := fs.Bool("version", false, "Print version and exit")
 	showHelpFlag := fs.Bool("help", false, "Show help")
@@ -80,6 +81,18 @@ func main() {
 	formats := parseFormats(*formatStr)
 	if len(formats) == 0 {
 		log.Fatal("no valid output format specified")
+	}
+
+	if !*force {
+		if existing := existingOutputs(*outDir); len(existing) > 0 {
+			fmt.Fprintf(os.Stderr, "Output already exists in %s:\n", *outDir)
+			for _, e := range existing {
+				fmt.Fprintf(os.Stderr, "  %s\n", e)
+			}
+			fmt.Fprintln(os.Stderr, "\nRefusing to overwrite — old reports left in place can be stale and mix with new output.")
+			fmt.Fprintln(os.Stderr, "Re-run with --force to regenerate, or pass --output DIR to write to a fresh directory.")
+			os.Exit(1)
+		}
 	}
 
 	var dateFromT, dateToT *time.Time
@@ -171,10 +184,10 @@ USAGE
 
 FLAGS
   --path PATH              Path to ~/.claude/ directory (auto-detect if omitted)
-  --format FORMATS         Output formats: csv,json,md,html,all (default: json)
+  --format FORMATS         Output formats: csv,json,md,html,all (default: all)
   --output DIR             Output directory (default: ./ccfx-output)
   --language en|ja         Report language (default: en)
-  --extract-conversations  Include full conversation content in report
+  --extract-conversations  Include full conversation content (default: on; disable with --extract-conversations=false)
   --session-filter UUID    Analyze only the specified session
   --project-filter PATH    Analyze only the specified project
   --date-from YYYY-MM-DD   Include only activity on or after this date
@@ -182,12 +195,13 @@ FLAGS
   --timezone ZONE          Timezone for timestamps (default: UTC)
                            Use IANA names: e.g. Asia/Tokyo, US/Eastern
   --redact-pii             Mask email addresses and UUIDs in output
+  --force                  Overwrite existing output (otherwise ccfx refuses)
   --verbose                Print debug information to stderr
   --version                Print version and exit
   --help                   Show this help
 
 EXAMPLES
-  ccfx                                          Analyze ~/.claude/, output JSON
+  ccfx                                          Analyze ~/.claude/, output all formats
   ccfx --format csv,json,md,html --language ja  All formats in Japanese
   ccfx --path /mnt/disk/.claude --format html   Analyze mounted evidence
   ccfx --date-from 2026-05-01 --redact-pii      Filter by date, mask PII
@@ -304,9 +318,9 @@ func showFormatsHelp() {
   Column headers respect --language (en/ja).
 
 EXAMPLES
-  ccfx --format json                 JSON only (default)
+  ccfx --format all                  All formats (csv,json,md,html) (default)
+  ccfx --format json                 JSON only
   ccfx --format csv,html             CSV tables + visual HTML report
-  ccfx --format all                  All formats (csv,json,md,html)
 `)
 }
 
@@ -363,7 +377,8 @@ func showReportHelp() {
                                  Shows breadth of Claude Code usage.
 
   13  Conversations              Full conversation text (user + assistant).
-                                 Only included with --extract-conversations.
+                                 Included by default; disable with
+                                 --extract-conversations=false.
                                  Can produce very large output.
 `)
 }
@@ -526,6 +541,16 @@ func showExamplesHelp() {
   CUSTOM OUTPUT DIRECTORY
     ccfx --format csv,html --output ./reports/2026-05
 `)
+}
+
+func existingOutputs(outDir string) []string {
+	var existing []string
+	for _, p := range renderer.KnownOutputFiles(outDir) {
+		if info, err := os.Stat(p); err == nil {
+			existing = append(existing, fmt.Sprintf("%s  (modified %s)", p, info.ModTime().Format("2006-01-02 15:04:05")))
+		}
+	}
+	return existing
 }
 
 func parseFormats(s string) []string {

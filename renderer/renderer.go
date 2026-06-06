@@ -2,6 +2,7 @@ package renderer
 
 import (
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/fkasasagi/ccfx/model"
@@ -75,6 +76,27 @@ func Render(cfg Config) (*Result, error) {
 	}
 
 	return result, nil
+}
+
+// KnownOutputFiles lists every file ccfx may generate, across all formats.
+// Used to detect a non-empty output directory before rendering.
+func KnownOutputFiles(outDir string) []string {
+	names := []string{
+		"report.json",
+		"report.md",
+		"report.html",
+		"sessions.csv",
+		"timeline.csv",
+		"tool_usage.csv",
+		"file_changes.csv",
+		"token_usage.csv",
+		"history.csv",
+	}
+	paths := make([]string, len(names))
+	for i, n := range names {
+		paths[i] = filepath.Join(outDir, n)
+	}
+	return paths
 }
 
 func appendTZ(dict Dict, tz *time.Location) Dict {

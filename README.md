@@ -61,16 +61,17 @@ ccfx version
 | フラグ | デフォルト | 説明 |
 |---|---|---|
 | `--path PATH` | 自動検出 (`~/.claude/`) | 解析対象ディレクトリのパス |
-| `--format csv,json,md,html,all` | `json` | 出力フォーマット (カンマ区切りで複数指定可、`all` で全形式) |
+| `--format csv,json,md,html,all` | `all` | 出力フォーマット (カンマ区切りで複数指定可、`all` で全形式) |
 | `--output DIR` | `./ccfx-output` | 出力先ディレクトリ |
 | `--language en\|ja` | `en` | レポート言語 (英語 / 日本語) |
-| `--extract-conversations` | off | 会話の全文をレポートに含める |
+| `--extract-conversations` | on | 会話の全文をレポートに含める (`--extract-conversations=false` で無効化) |
 | `--session-filter UUID` | - | 特定セッションのみ分析 |
 | `--project-filter PATH` | - | 特定プロジェクトのみ分析 |
 | `--date-from YYYY-MM-DD` | - | この日付以降に限定 |
 | `--date-to YYYY-MM-DD` | - | この日付以前に限定 |
 | `--timezone ZONE` | `UTC` | IANA タイムゾーン名 (例: `Asia/Tokyo`, `America/New_York`) |
 | `--redact-pii` | off | email・UUID をマスク |
+| `--force` | off | 出力先に既存ファイルがあっても上書きする (未指定時は中止) |
 | `--verbose` | off | デバッグログ出力 |
 | `--version` | - | バージョン表示 |
 | `--help` | - | ヘルプ表示 |
@@ -277,7 +278,7 @@ Timestamp (UTC),Session ID,Project,Command
 | 10 | Command History | `history.jsonl` のコマンド入力履歴 (タイムスタンプ、セッション、プロジェクト) |
 | 11 | File History Statistics | `file-history/` のファイル編集セッション数・バージョン総数 |
 | 12 | Auxiliary Artifact Statistics | shell-snapshots, paste-cache, tasks, plans, custom-commands の件数 |
-| 13 | Conversations | 会話全文 (`--extract-conversations` 指定時のみ) |
+| 13 | Conversations | 会話全文 (デフォルトで含む。`--extract-conversations=false` で除外) |
 
 ## セキュリティに関する注意
 
