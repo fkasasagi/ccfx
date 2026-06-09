@@ -230,12 +230,14 @@ Date,Input Tokens,Output Tokens,Cache Creation,Cache Read
 ### CSV - history.csv
 
 ```
-Timestamp (UTC),Session ID,Project,Command
-2026-05-12 13:16:00,11112222-3333-4444-5555-666677778888,/home/user/myproject,/plan
-2026-05-12 13:17:07,11112222-3333-4444-5555-666677778888,/home/user/myproject,/effort
-2026-05-12 13:18:32,11112222-3333-4444-5555-666677778888,/home/user/myproject,fix the login bug
-2026-05-13 09:42:15,c4d5e6f7-a8b9-0123-cdef-456789abcdef,/home/user/api,add retry logic to the HTTP client
+Timestamp (UTC),Session ID,Project,Shell?,Command
+2026-05-12 13:16:00,11112222-3333-4444-5555-666677778888,/home/user/myproject,false,/plan
+2026-05-12 13:17:07,11112222-3333-4444-5555-666677778888,/home/user/myproject,false,/effort
+2026-05-12 13:18:32,11112222-3333-4444-5555-666677778888,/home/user/myproject,false,fix the login bug
+2026-05-13 09:42:15,c4d5e6f7-a8b9-0123-cdef-456789abcdef,/home/user/api,true,!git status
 ```
+
+`Shell?` 列は、プロンプトの `!` バンモードでサブシェル実行されたエントリのとき `true`、通常プロンプトやスラッシュコマンドのとき `false` になります。
 
 ### Markdown (冒頭)
 
@@ -278,7 +280,7 @@ Timestamp (UTC),Session ID,Project,Command
 | 7 | File Modifications | Edit/Write ツールによるファイル変更記録 |
 | 8 | Permission & Security | deny/allow ルール、フック定義、セッション別パーミッションモード |
 | 9 | Credential Discovery | `.credentials.json` の存在検出 (トークン値は読みません) |
-| 10 | Command History | `history.jsonl` のコマンド入力履歴 (タイムスタンプ、セッション、プロジェクト) |
+| 10 | Command History | `history.jsonl` のコマンド入力履歴 (タイムスタンプ、セッション、プロジェクト、`!` バンモードのサブシェル実行を示す `Shell?` フラグ) |
 | 11 | File History Statistics | `file-history/` のファイル編集セッション数・バージョン総数 |
 | 12 | Auxiliary Artifact Statistics | shell-snapshots, paste-cache, tasks, plans, custom-commands の件数 |
 | 13 | Conversations | 会話全文 (デフォルトで含む。`--extract-conversations=false` で除外) |

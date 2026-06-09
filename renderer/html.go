@@ -301,11 +301,11 @@ code{background:var(--card);padding:2px 6px;border-radius:3px;font-size:.85rem;c
 <div class="scroll-table">
 <table>
 <thead><tr>
-<th>{{.Dict.timestamp}}</th><th>{{.Dict.session_id}}</th><th>{{.Dict.project}}</th><th>{{.Dict.display}}</th>
+<th>{{.Dict.timestamp}}</th><th>{{.Dict.session_id}}</th><th>{{.Dict.project}}</th><th>{{.Dict.shell_command}}</th><th>{{.Dict.display}}</th>
 </tr></thead>
 <tbody>
 {{range .Report.CommandHistory}}<tr>
-<td>{{fmtTime .Timestamp}}</td><td><code>{{.SessionID}}</code></td><td>{{.Project}}</td><td>{{truncate (sanitize .Display) 120}}</td>
+<td>{{fmtTime .Timestamp}}</td><td><code>{{.SessionID}}</code></td><td>{{.Project}}</td><td>{{if .IsShellCommand}}✓{{end}}</td><td>{{truncate (sanitize .Display) 120}}</td>
 </tr>{{end}}
 </tbody>
 </table>

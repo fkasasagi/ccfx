@@ -230,12 +230,14 @@ Date,Input Tokens,Output Tokens,Cache Creation,Cache Read
 ### CSV - history.csv
 
 ```
-Timestamp (UTC),Session ID,Project,Command
-2026-05-12 13:16:00,11112222-3333-4444-5555-666677778888,/home/user/myproject,/plan
-2026-05-12 13:17:07,11112222-3333-4444-5555-666677778888,/home/user/myproject,/effort
-2026-05-12 13:18:32,11112222-3333-4444-5555-666677778888,/home/user/myproject,fix the login bug
-2026-05-13 09:42:15,c4d5e6f7-a8b9-0123-cdef-456789abcdef,/home/user/api,add retry logic to the HTTP client
+Timestamp (UTC),Session ID,Project,Shell?,Command
+2026-05-12 13:16:00,11112222-3333-4444-5555-666677778888,/home/user/myproject,false,/plan
+2026-05-12 13:17:07,11112222-3333-4444-5555-666677778888,/home/user/myproject,false,/effort
+2026-05-12 13:18:32,11112222-3333-4444-5555-666677778888,/home/user/myproject,false,fix the login bug
+2026-05-13 09:42:15,c4d5e6f7-a8b9-0123-cdef-456789abcdef,/home/user/api,true,!git status
 ```
+
+The `Shell?` column is `true` when the entry was run as a subshell command via the prompt's `!` bang-mode, and `false` for regular prompts and slash commands.
 
 ### Markdown (beginning)
 
@@ -278,7 +280,7 @@ The generated report includes the following sections:
 | 7 | File Modifications | File changes made by the Edit/Write tools |
 | 8 | Permission & Security | deny/allow rules, hook definitions, per-session permission mode |
 | 9 | Credential Discovery | Existence detection of `.credentials.json` (token values are not read) |
-| 10 | Command History | Command input history from `history.jsonl` (timestamp, session, project) |
+| 10 | Command History | Command input history from `history.jsonl` (timestamp, session, project, and a `Shell?` flag marking `!` bang-mode subshell commands) |
 | 11 | File History Statistics | File edit session count and total version count from `file-history/` |
 | 12 | Auxiliary Artifact Statistics | Counts of shell-snapshots, paste-cache, tasks, plans, custom-commands |
 | 13 | Conversations | Full conversation text (included by default; exclude with `--extract-conversations=false`) |

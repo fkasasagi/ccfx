@@ -197,7 +197,7 @@ func writeHistoryCSV(report *model.ForensicReport, path string, dict Dict, tz *t
 	defer f.Close()
 
 	w.Write([]string{
-		dict["timestamp"], dict["session_id"], dict["project"], dict["display"],
+		dict["timestamp"], dict["session_id"], dict["project"], dict["shell_command"], dict["display"],
 	})
 
 	for _, h := range report.CommandHistory {
@@ -205,6 +205,7 @@ func writeHistoryCSV(report *model.ForensicReport, path string, dict Dict, tz *t
 			formatTimeIn(h.Timestamp, tz),
 			h.SessionID,
 			h.Project,
+			strconv.FormatBool(h.IsShellCommand),
 			h.Display,
 		})
 	}

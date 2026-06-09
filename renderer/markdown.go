@@ -193,9 +193,9 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict, tz *t
 			b.WriteString(fmt.Sprintf("*(%d entries total, showing last 100)*\n\n", len(hist)))
 			hist = hist[len(hist)-100:]
 		}
-		b.WriteString(fmt.Sprintf("| %s | %s | %s | %s |\n",
-			dict["timestamp"], dict["session_id"], dict["project"], dict["display"]))
-		b.WriteString("|---|---|---|---|\n")
+		b.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
+			dict["timestamp"], dict["session_id"], dict["project"], dict["shell_command"], dict["display"]))
+		b.WriteString("|---|---|---|---|---|\n")
 		for _, h := range hist {
 			cmd := h.Display
 			if len(cmd) > 80 {
@@ -203,8 +203,12 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict, tz *t
 			}
 			cmd = strings.ReplaceAll(cmd, "|", "\\|")
 			cmd = strings.ReplaceAll(cmd, "\n", " ")
-			b.WriteString(fmt.Sprintf("| %s | `%.8s` | %s | %s |\n",
-				ft(h.Timestamp), h.SessionID, h.Project, cmd))
+			shell := ""
+			if h.IsShellCommand {
+				shell = "✓"
+			}
+			b.WriteString(fmt.Sprintf("| %s | `%.8s` | %s | %s | %s |\n",
+				ft(h.Timestamp), h.SessionID, h.Project, shell, cmd))
 		}
 		b.WriteString("\n")
 	}

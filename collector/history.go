@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fkasasagi/ccfx/model"
@@ -41,10 +42,11 @@ func parseHistory(path string) ([]model.HistoryEntry, error) {
 			ts = time.UnixMilli(raw.Timestamp)
 		}
 		entries = append(entries, model.HistoryEntry{
-			Display:   raw.Display,
-			Timestamp: ts,
-			Project:   raw.Project,
-			SessionID: raw.SessionID,
+			Display:        raw.Display,
+			Timestamp:      ts,
+			Project:        raw.Project,
+			SessionID:      raw.SessionID,
+			IsShellCommand: strings.HasPrefix(raw.Display, "!"),
 		})
 	}
 	return entries, scanner.Err()

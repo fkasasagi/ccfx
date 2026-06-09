@@ -175,10 +175,11 @@ type RawData struct {
 }
 
 type HistoryEntry struct {
-	Display   string    `json:"display"`
-	Timestamp time.Time `json:"timestamp"`
-	Project   string    `json:"project"`
-	SessionID string    `json:"sessionId"`
+	Display        string    `json:"display"`
+	Timestamp      time.Time `json:"timestamp"`
+	Project        string    `json:"project"`
+	SessionID      string    `json:"sessionId"`
+	IsShellCommand bool      `json:"is_shell_command"`
 }
 
 type SessionFile struct {
