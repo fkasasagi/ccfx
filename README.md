@@ -1,3 +1,6 @@
+[![English](https://img.shields.io/badge/README-English-blue)](README.md)
+[![日本語](https://img.shields.io/badge/README-%E6%97%A5%E6%9C%AC%E8%AA%9E-lightgrey)](README.ja.md)
+
 # ccfx - Claude Code Forensics eXtractor
 
 A digital forensics tool that analyzes the local artifacts Claude Code leaves behind (`~/.claude/`) and reports **who** used Claude Code, **when**, and **how**.
@@ -7,8 +10,6 @@ A single Go binary with zero external dependencies. Supports Linux / macOS (Wind
 > **⚠ Note:** This tool is experimental. It does not guarantee the accuracy of its output. Use it at your own risk.
 >
 > This tool is intended for forensic analysis, internal auditing, and security review by users with proper authorization. Do not use it to collect or analyze other people's data without consent.
-
-*日本語版: [README.ja.md](README.ja.md)*
 
 ---
 
