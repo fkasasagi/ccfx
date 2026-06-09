@@ -1,12 +1,17 @@
+# Build outputs (single binary + cross-compiled artifacts)
 ccfx
-ccfx.exe
+ccfx-*
 *.exe
 *.dll
 *.so
 *.dylib
 *.test
 *.out
+checksums.txt
+
+# Local-only data and config
 ccfx-output/
+.claude/settings.local.json
 /tmp/
 .DS_Store
 docs/
