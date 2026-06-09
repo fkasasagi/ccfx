@@ -131,7 +131,10 @@ code{background:var(--card);padding:2px 6px;border-radius:3px;font-size:.85rem;c
 .stat-value{font-size:1.8rem;font-weight:700;color:var(--accent)}
 .stat-label{font-size:.85rem;color:var(--muted)}
 .scroll-table{max-height:500px;overflow-y:auto;border:1px solid var(--border);border-radius:6px}
-@media print{body{background:#fff;color:#000;padding:1rem}h1,h2,h3,.stat-value{color:#000}.card,.stat-box{border-color:#ddd;background:#f8f8f8}th{background:#eee;color:#000}td{border-color:#ddd}tr:hover{background:transparent}.scroll-table{max-height:none;overflow:visible}}
+.col-filter{display:block;width:100%;margin-top:4px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:3px;padding:2px 5px;font-size:.72rem;font-weight:400}
+.col-filter::placeholder{color:var(--muted)}
+.filter-hint{color:var(--muted);font-size:.78rem;margin:.25rem 0 .5rem}
+@media print{body{background:#fff;color:#000;padding:1rem}h1,h2,h3,.stat-value{color:#000}.card,.stat-box{border-color:#ddd;background:#f8f8f8}th{background:#eee;color:#000}td{border-color:#ddd}tr:hover{background:transparent}.scroll-table{max-height:none;overflow:visible}.col-filter,.filter-hint{display:none}}
 </style>
 </head>
 <body>
@@ -151,6 +154,8 @@ code{background:var(--card);padding:2px 6px;border-radius:3px;font-size:.85rem;c
 <div class="stat-box"><div class="stat-value">{{fmtInt64 .Report.TokenUsage.TotalOutput}}</div><div class="stat-label">{{.Dict.output_tokens}}</div></div>
 </div>
 
+<p class="filter-hint">{{.Dict.filter_hint}}</p>
+
 <h2>1. {{.Dict.user_identity}}</h2>
 <div class="card">
 {{if .Report.UserIdentity.Email}}<div class="field"><span class="field-label">{{.Dict.email}}</span><span class="field-value">{{.Report.UserIdentity.Email}}</span></div>{{end}}
@@ -165,7 +170,7 @@ code{background:var(--card);padding:2px 6px;border-radius:3px;font-size:.85rem;c
 
 <h2>2. {{.Dict.sessions}}</h2>
 <div class="scroll-table">
-<table>
+<table class="filterable">
 <thead><tr>
 <th>{{.Dict.session_id}}</th><th>{{.Dict.project}}</th><th>{{.Dict.started_at}}</th>
 <th>{{.Dict.duration_min}}</th><th>{{.Dict.model}}</th><th>{{.Dict.message_count}}</th>
@@ -183,7 +188,7 @@ code{background:var(--card);padding:2px 6px;border-radius:3px;font-size:.85rem;c
 
 <h2>3. {{.Dict.timeline}}</h2>
 <div class="scroll-table">
-<table>
+<table class="filterable">
 <thead><tr>
 <th>{{.Dict.timestamp}}</th><th>{{.Dict.event_type}}</th><th>{{.Dict.project}}</th>
 <th>{{.Dict.summary}}</th><th>{{.Dict.model}}</th>
@@ -258,7 +263,7 @@ code{background:var(--card);padding:2px 6px;border-radius:3px;font-size:.85rem;c
 {{if .Report.FileChanges}}
 <h2>7. {{.Dict.file_changes}}</h2>
 <div class="scroll-table">
-<table>
+<table class="filterable">
 <thead><tr><th>{{.Dict.timestamp}}</th><th>{{.Dict.file_path}}</th><th>{{.Dict.tool_name}}</th><th>{{.Dict.operation}}</th></tr></thead>
 <tbody>
 {{range .Report.FileChanges}}<tr>
@@ -299,7 +304,7 @@ code{background:var(--card);padding:2px 6px;border-radius:3px;font-size:.85rem;c
 {{if .Report.CommandHistory}}
 <h2>10. {{.Dict.command_history}}</h2>
 <div class="scroll-table">
-<table>
+<table class="filterable">
 <thead><tr>
 <th>{{.Dict.timestamp}}</th><th>{{.Dict.session_id}}</th><th>{{.Dict.project}}</th><th>{{.Dict.shell_command}}</th><th>{{.Dict.display}}</th>
 </tr></thead>
@@ -332,8 +337,8 @@ code{background:var(--card);padding:2px 6px;border-radius:3px;font-size:.85rem;c
 {{range .Report.Conversations}}
 <details>
 <summary>{{if .Title}}{{.Title}}{{else}}{{.SessionID}}{{end}} ({{.Project}})</summary>
-<table>
-<thead><tr><th>{{$.Dict.timestamp}}</th><th>Role</th><th>Content</th></tr></thead>
+<table class="filterable">
+<thead><tr><th>{{$.Dict.timestamp}}</th><th>{{$.Dict.role}}</th><th>{{$.Dict.content}}</th></tr></thead>
 <tbody>
 {{range .Messages}}<tr>
 <td>{{fmtTime .Timestamp}}</td><td>{{.Role}}</td><td>{{truncate (sanitize .Content) 300}}</td>
@@ -343,6 +348,40 @@ code{background:var(--card);padding:2px 6px;border-radius:3px;font-size:.85rem;c
 </details>
 {{end}}
 {{end}}
+
+<script>
+(function(){
+  var PH = "{{.Dict.filter_placeholder}}";
+  document.querySelectorAll('table.filterable').forEach(function(table){
+    var head = table.tHead && table.tHead.rows[0];
+    var body = table.tBodies[0];
+    if(!head || !body){ return; }
+    var inputs = [];
+    Array.prototype.forEach.call(head.cells, function(th, i){
+      var inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'col-filter';
+      inp.placeholder = PH;
+      inp.addEventListener('click', function(e){ e.stopPropagation(); });
+      inp.addEventListener('input', apply);
+      th.appendChild(inp);
+      inputs[i] = inp;
+    });
+    function apply(){
+      var terms = inputs.map(function(inp){ return inp.value.toLowerCase(); });
+      Array.prototype.forEach.call(body.rows, function(row){
+        var show = true;
+        for(var i=0;i<terms.length;i++){
+          if(!terms[i]){ continue; }
+          var cell = row.cells[i];
+          if(!cell || cell.textContent.toLowerCase().indexOf(terms[i]) === -1){ show = false; break; }
+        }
+        row.style.display = show ? '' : 'none';
+      });
+    }
+  });
+})();
+</script>
 
 </body>
 </html>`

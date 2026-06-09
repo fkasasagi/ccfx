@@ -134,7 +134,8 @@ ccfx-output/
 ├── tool_usage.csv       # Tool usage statistics
 ├── file_changes.csv     # File change records
 ├── token_usage.csv      # Daily token consumption
-└── history.csv          # Command input history
+├── history.csv          # Command input history
+└── conversations.csv    # Full conversation messages (one row per message)
 ```
 
 CSV files include a UTF-8 BOM, so they open without garbled characters in Windows Excel.
@@ -263,7 +264,7 @@ The `Shell?` column is `true` when the entry was run as a subshell command via t
 
 ### HTML
 
-A self-contained HTML file (embedded CSS, no external resources) is generated. It features a dark theme, collapsible tables, and CSS bar charts, and opens directly in a browser. It is also print-ready (`@media print`).
+A self-contained HTML file (embedded CSS and JS, no external resources) is generated. It features a dark theme, collapsible tables, CSS bar charts, and **per-column filter boxes** on the large tables (Sessions, Timeline, File Changes, Command History, Conversations) for live row filtering. It opens directly in a browser and is print-ready (`@media print`; filters are hidden when printing).
 
 ## Report Sections
 

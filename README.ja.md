@@ -134,7 +134,8 @@ ccfx-output/
 ├── tool_usage.csv       # ツール使用統計
 ├── file_changes.csv     # ファイル変更記録
 ├── token_usage.csv      # 日別トークン消費量
-└── history.csv          # コマンド入力履歴
+├── history.csv          # コマンド入力履歴
+└── conversations.csv    # 会話メッセージ全文 (1 メッセージ 1 行)
 ```
 
 CSV には UTF-8 BOM が付いているため、Windows Excel で文字化けせずに開けます。
@@ -263,7 +264,7 @@ Timestamp (UTC),Session ID,Project,Shell?,Command
 
 ### HTML
 
-自己完結型の HTML ファイル (CSS 埋め込み、外部リソース不要) が生成されます。ダークテーマ、折りたたみ可能テーブル、CSS バーチャート付き。ブラウザで直接開けます。印刷にも対応 (`@media print`)。
+自己完結型の HTML ファイル (CSS・JS 埋め込み、外部リソース不要) が生成されます。ダークテーマ、折りたたみ可能テーブル、CSS バーチャートに加え、大きなテーブル (Sessions / Timeline / File Changes / Command History / Conversations) には**各カラムのフィルター入力欄**が付き、その場で行を絞り込めます。ブラウザで直接開け、印刷にも対応 (`@media print`。印刷時はフィルターを非表示)。
 
 ## レポートセクション
 

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/fkasasagi/ccfx/model"
@@ -27,6 +28,7 @@ func writeCSV(report *model.ForensicReport, outDir string, dict Dict, tz *time.L
 		{"file_changes.csv", writeFileChangesCSV},
 		{"token_usage.csv", writeTokenUsageCSV},
 		{"history.csv", writeHistoryCSV},
+		{"conversations.csv", writeConversationsCSV},
 	}
 
 	for _, w := range writers {
@@ -208,6 +210,32 @@ func writeHistoryCSV(report *model.ForensicReport, path string, dict Dict, tz *t
 			strconv.FormatBool(h.IsShellCommand),
 			h.Display,
 		})
+	}
+	w.Flush()
+	return w.Error()
+}
+
+func writeConversationsCSV(report *model.ForensicReport, path string, dict Dict, tz *time.Location) error {
+	f, w, err := newCSVFile(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	w.Write([]string{
+		dict["session_id"], dict["project"], dict["title_label"], dict["timestamp"],
+		dict["role"], dict["msg_type"], dict["model"], dict["tool_name"], dict["content"],
+	})
+
+	for _, c := range report.Conversations {
+		for _, m := range c.Messages {
+			content := strings.ReplaceAll(m.Content, "\n", " ")
+			w.Write([]string{
+				c.SessionID, c.Project, c.Title,
+				formatTimeIn(m.Timestamp, tz),
+				m.Role, m.Type, m.Model, m.ToolName, content,
+			})
+		}
 	}
 	w.Flush()
 	return w.Error()
