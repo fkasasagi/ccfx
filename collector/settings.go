@@ -8,7 +8,7 @@ import (
 )
 
 type rawSettings struct {
-	Permissions *rawPermissions        `json:"permissions"`
+	Permissions *rawPermissions            `json:"permissions"`
 	Hooks       map[string]json.RawMessage `json:"hooks"`
 }
 

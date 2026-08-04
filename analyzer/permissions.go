@@ -33,13 +33,13 @@ func buildPermissions(raw *model.RawData) model.PermissionReport {
 
 func buildProjectSummaries(raw *model.RawData, projectMap map[string]string, sessions []model.Session) []model.ProjectSummary {
 	type projAccum struct {
-		path        string
-		encoded     string
-		sessions    map[string]bool
-		firstSeen   interface{}
-		lastSeen    interface{}
-		messages    int
-		toolUses    int
+		path      string
+		encoded   string
+		sessions  map[string]bool
+		firstSeen interface{}
+		lastSeen  interface{}
+		messages  int
+		toolUses  int
 	}
 
 	accum := make(map[string]*projAccum)

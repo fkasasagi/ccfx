@@ -3,20 +3,20 @@ package model
 import "time"
 
 type ForensicReport struct {
-	Meta          ReportMeta         `json:"meta"`
-	UserIdentity  UserIdentity       `json:"user_identity"`
-	Sessions      []Session          `json:"sessions"`
-	Timeline      []TimelineEntry    `json:"timeline"`
-	Projects      []ProjectSummary   `json:"projects"`
-	ToolUsage     ToolUsageReport    `json:"tool_usage"`
-	TokenUsage    TokenUsageReport   `json:"token_usage"`
-	FileChanges   []FileChange       `json:"file_changes"`
-	Permissions   PermissionReport   `json:"permissions"`
-	Credentials   CredentialReport   `json:"credentials"`
-	CommandHistory []HistoryEntry    `json:"command_history,omitempty"`
+	Meta             ReportMeta       `json:"meta"`
+	UserIdentity     UserIdentity     `json:"user_identity"`
+	Sessions         []Session        `json:"sessions"`
+	Timeline         []TimelineEntry  `json:"timeline"`
+	Projects         []ProjectSummary `json:"projects"`
+	ToolUsage        ToolUsageReport  `json:"tool_usage"`
+	TokenUsage       TokenUsageReport `json:"token_usage"`
+	FileChanges      []FileChange     `json:"file_changes"`
+	Permissions      PermissionReport `json:"permissions"`
+	Credentials      CredentialReport `json:"credentials"`
+	CommandHistory   []HistoryEntry   `json:"command_history,omitempty"`
 	FileHistoryStats FileHistoryStats `json:"file_history_stats"`
-	MiscStats     MiscStats          `json:"misc_stats"`
-	Conversations []Conversation     `json:"conversations,omitempty"`
+	MiscStats        MiscStats        `json:"misc_stats"`
+	Conversations    []Conversation   `json:"conversations,omitempty"`
 }
 
 type ReportMeta struct {
@@ -35,13 +35,13 @@ type DateRange struct {
 }
 
 type UserIdentity struct {
-	Email            string `json:"email,omitempty"`
-	AccountUUID      string `json:"account_uuid,omitempty"`
-	OrganizationUUID string `json:"organization_uuid,omitempty"`
-	OrganizationName string `json:"organization_name,omitempty"`
-	OrganizationType string `json:"organization_type,omitempty"`
-	OrganizationRole string `json:"organization_role,omitempty"`
-	RateLimitTier    string `json:"rate_limit_tier,omitempty"`
+	Email             string `json:"email,omitempty"`
+	AccountUUID       string `json:"account_uuid,omitempty"`
+	OrganizationUUID  string `json:"organization_uuid,omitempty"`
+	OrganizationName  string `json:"organization_name,omitempty"`
+	OrganizationType  string `json:"organization_type,omitempty"`
+	OrganizationRole  string `json:"organization_role,omitempty"`
+	RateLimitTier     string `json:"rate_limit_tier,omitempty"`
 	ClaudeCodeVersion string `json:"claude_code_version,omitempty"`
 }
 
@@ -94,8 +94,8 @@ type ProjectSummary struct {
 }
 
 type ToolUsageReport struct {
-	ByTool   map[string]int            `json:"by_tool"`
-	TopTools []ToolRanking             `json:"top_tools"`
+	ByTool   map[string]int `json:"by_tool"`
+	TopTools []ToolRanking  `json:"top_tools"`
 }
 
 type ToolRanking struct {
@@ -105,13 +105,13 @@ type ToolRanking struct {
 }
 
 type TokenUsageReport struct {
-	TotalInput       int64                      `json:"total_input"`
-	TotalOutput      int64                      `json:"total_output"`
-	TotalCacheCreate int64                      `json:"total_cache_creation"`
-	TotalCacheRead   int64                      `json:"total_cache_read"`
-	ByModel          map[string]TokenSummary    `json:"by_model"`
-	ByProject        map[string]TokenSummary    `json:"by_project"`
-	ByDate           map[string]TokenSummary    `json:"by_date"`
+	TotalInput       int64                   `json:"total_input"`
+	TotalOutput      int64                   `json:"total_output"`
+	TotalCacheCreate int64                   `json:"total_cache_creation"`
+	TotalCacheRead   int64                   `json:"total_cache_read"`
+	ByModel          map[string]TokenSummary `json:"by_model"`
+	ByProject        map[string]TokenSummary `json:"by_project"`
+	ByDate           map[string]TokenSummary `json:"by_date"`
 }
 
 type FileChange struct {
@@ -232,9 +232,9 @@ type BackupData struct {
 }
 
 type BackupProjectInfo struct {
-	Path      string
-	CostUSD   float64
-	Tokens    TokenSummary
+	Path    string
+	CostUSD float64
+	Tokens  TokenSummary
 }
 
 type SettingsData struct {

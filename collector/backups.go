@@ -16,24 +16,24 @@ type rawBackup struct {
 }
 
 type rawOAuthAccount struct {
-	AccountUUID              string `json:"accountUuid"`
-	EmailAddress             string `json:"emailAddress"`
-	OrganizationUUID         string `json:"organizationUuid"`
-	OrganizationName         string `json:"organizationName"`
-	OrganizationType         string `json:"organizationType"`
-	OrganizationRole         string `json:"organizationRole"`
+	AccountUUID               string `json:"accountUuid"`
+	EmailAddress              string `json:"emailAddress"`
+	OrganizationUUID          string `json:"organizationUuid"`
+	OrganizationName          string `json:"organizationName"`
+	OrganizationType          string `json:"organizationType"`
+	OrganizationRole          string `json:"organizationRole"`
 	OrganizationRateLimitTier string `json:"organizationRateLimitTier"`
-	UserRateLimitTier        string `json:"userRateLimitTier"`
+	UserRateLimitTier         string `json:"userRateLimitTier"`
 }
 
 type rawBackupProject struct {
-	LastCost                         float64                `json:"lastCost"`
-	LastTotalInputTokens             int64                  `json:"lastTotalInputTokens"`
-	LastTotalOutputTokens            int64                  `json:"lastTotalOutputTokens"`
-	LastTotalCacheCreationInputTokens int64                 `json:"lastTotalCacheCreationInputTokens"`
-	LastTotalCacheReadInputTokens    int64                  `json:"lastTotalCacheReadInputTokens"`
-	LastSessionFirstPrompt           string                 `json:"lastSessionFirstPrompt"`
-	LastSessionModified              json.RawMessage        `json:"lastSessionModified"`
+	LastCost                          float64         `json:"lastCost"`
+	LastTotalInputTokens              int64           `json:"lastTotalInputTokens"`
+	LastTotalOutputTokens             int64           `json:"lastTotalOutputTokens"`
+	LastTotalCacheCreationInputTokens int64           `json:"lastTotalCacheCreationInputTokens"`
+	LastTotalCacheReadInputTokens     int64           `json:"lastTotalCacheReadInputTokens"`
+	LastSessionFirstPrompt            string          `json:"lastSessionFirstPrompt"`
+	LastSessionModified               json.RawMessage `json:"lastSessionModified"`
 }
 
 func parseLatestBackup(backupsDir string) (*model.BackupData, error) {
