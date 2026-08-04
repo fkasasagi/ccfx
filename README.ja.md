@@ -89,7 +89,8 @@ ccfx version
 | `ccfx help` | メインヘルプ (フラグ一覧、使用例、トピック一覧) |
 | `ccfx help artifacts` | 解析対象ファイルの場所・形式・抽出情報 |
 | `ccfx help formats` | CSV / JSON / Markdown / HTML 各フォーマットの詳細 |
-| `ccfx help report` | レポート 13 セクションの内容説明 |
+| `ccfx help report` | レポート 14 セクションの内容説明 |
+| `ccfx help injection` | セッションがプロンプトインジェクションを受けたかの判断方法: 何を見るか、シグナルの分類、想定される偽陽性 |
 | `ccfx help security` | 認証情報の扱い、PII マスク、read-only 動作 |
 | `ccfx help timezone` | 使用可能な IANA タイムゾーン名の一覧 |
 | `ccfx help examples` | IR・内部監査・セキュリティレビュー等のワークフロー例 |
@@ -115,6 +116,10 @@ ccfx version
 # タイムスタンプを日本時間 (JST) で出力
 ./ccfx --format all --timezone Asia/Tokyo --language ja
 
+# プロンプトインジェクションの疑いを調べる (レポートのセクション 14)
+./ccfx --format html --language ja
+# → report.html のセクション 14 で、検出事項 → 要確認セッション → 該当箇所の抜粋の順に読む
+
 # 特定セッションの会話全文を抽出
 ./ccfx --format json --session-filter "a1b2c3d4-e5f6-7890-abcd-ef1234567890" --extract-conversations
 ```
@@ -128,7 +133,7 @@ ccfx version
 ```
 ccfx-output/
 ├── report.json          # 完全なレポート (構造化 JSON)
-├── report.md            # Markdown レポート (13 セクション)
+├── report.md            # Markdown レポート (14 セクション)
 ├── report.html          # 自己完結型 HTML (CSS 埋め込み、ダークテーマ)
 ├── sessions.csv         # セッション一覧
 ├── timeline.csv         # アクティビティタイムライン
@@ -136,7 +141,9 @@ ccfx-output/
 ├── file_changes.csv     # ファイル変更記録
 ├── token_usage.csv      # 日別トークン消費量
 ├── history.csv          # コマンド入力履歴
-└── conversations.csv    # 会話メッセージ全文 (1 メッセージ 1 行)
+├── conversations.csv    # 会話メッセージ全文 (1 メッセージ 1 行)
+├── injection_events.csv     # 入出力の全件一覧
+└── injection_findings.csv   # 相関を取った検出事項 (重大度順)
 ```
 
 CSV には UTF-8 BOM が付いているため、Windows Excel で文字化けせずに開けます。
@@ -292,6 +299,7 @@ Timestamp (UTC),Session ID,Project,Shell?,Command
 | 11 | File History Statistics | `file-history/` のファイル編集セッション数・バージョン総数 |
 | 12 | Auxiliary Artifact Statistics | shell-snapshots, paste-cache, tasks, plans, custom-commands の件数 |
 | 13 | Conversations | 会話全文 (デフォルトで含む。`--extract-conversations=false` で除外) |
+| 14 | Prompt Injection Triage | 各セッションに何が入り (取得した URL・読んだファイル・hook が注入したテキスト)、そのテキストがどう見え、その後に何が出て、何が変更されたか。相関を取って重大度順に提示する。`ccfx help injection` を参照 |
 
 ## セキュリティに関する注意
 

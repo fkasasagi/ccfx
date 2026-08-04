@@ -16,7 +16,77 @@ type ForensicReport struct {
 	CommandHistory   []HistoryEntry   `json:"command_history,omitempty"`
 	FileHistoryStats FileHistoryStats `json:"file_history_stats"`
 	MiscStats        MiscStats        `json:"misc_stats"`
+	Injection        InjectionReport  `json:"injection"`
 	Conversations    []Conversation   `json:"conversations,omitempty"`
+}
+
+// ContentSignal is one hallmark of a prompt injection found in text that
+// entered the conversation. It is a symptom to review, never a verdict.
+type ContentSignal struct {
+	Rule     string `json:"rule"`
+	Severity string `json:"severity"`
+	Offset   int    `json:"offset"`
+	Excerpt  string `json:"excerpt"`
+}
+
+// InjectionReport answers, per session: what came in, what the signals in it
+// were, what went out afterwards, and what was left changed behind.
+type InjectionReport struct {
+	Events         []InjectionEvent   `json:"events,omitempty"`
+	Findings       []InjectionFinding `json:"findings,omitempty"`
+	Sessions       []SessionTriage    `json:"sessions,omitempty"`
+	ScannedResults int                `json:"scanned_tool_results"`
+	SignalsDropped int                `json:"signals_dropped,omitempty"`
+}
+
+// Event categories. One flat event list keeps the correlation pass, the CSV and
+// the renderers from each growing their own parallel taxonomy.
+const (
+	CatNetworkIngress   = "network_ingress"
+	CatFileIngress      = "file_ingress"
+	CatContextInjection = "context_injection"
+	CatEgress           = "egress"
+	CatConfigChange     = "config_change"
+	CatPermissionChange = "permission_change"
+)
+
+type InjectionEvent struct {
+	Timestamp time.Time `json:"timestamp"`
+	SessionID string    `json:"session_id"`
+	// SourceID identifies the tool call an event came from. One call can be both
+	// ingress and egress (`curl -d @.env https://…`), and the two halves of that
+	// single action must never be correlated against each other.
+	SourceID string          `json:"-"`
+	Project  string          `json:"project,omitempty"`
+	Category string          `json:"category"`
+	ToolName string          `json:"tool_name,omitempty"`
+	Detail   string          `json:"detail,omitempty"`
+	Bytes    int64           `json:"bytes,omitempty"`
+	IsError  bool            `json:"is_error,omitempty"`
+	Preview  string          `json:"preview,omitempty"`
+	Signals  []ContentSignal `json:"signals,omitempty"`
+}
+
+type InjectionFinding struct {
+	Rule      string           `json:"rule"`
+	Severity  string           `json:"severity"`
+	SessionID string           `json:"session_id"`
+	Project   string           `json:"project,omitempty"`
+	Summary   string           `json:"summary"`
+	Evidence  []InjectionEvent `json:"evidence,omitempty"`
+}
+
+type SessionTriage struct {
+	SessionID        string    `json:"session_id"`
+	Project          string    `json:"project,omitempty"`
+	StartedAt        time.Time `json:"started_at,omitempty"`
+	NetworkIngress   int       `json:"network_ingress"`
+	FileIngress      int       `json:"file_ingress"`
+	ContextInjection int       `json:"context_injection"`
+	Egress           int       `json:"egress"`
+	ConfigChanges    int       `json:"config_changes"`
+	SignalCount      int       `json:"signal_count"`
+	TopSeverity      string    `json:"top_severity,omitempty"`
 }
 
 type ReportMeta struct {
@@ -203,6 +273,49 @@ type TranscriptSession struct {
 	Model          string
 	GitBranch      string
 	PermissionMode string
+
+	// Injection-triage material. ToolEvents pairs each tool_use with its result;
+	// Attachments covers text the harness itself injected (hook output above all).
+	ToolEvents        []ToolEvent
+	Attachments       []AttachmentEvent
+	PermissionChanges []PermissionChange
+	ScannedResults    int
+	SignalsDropped    int
+}
+
+// ToolEvent is one tool_use joined to its tool_result. The result body is never
+// retained — it is scanned while streaming and only the signals survive.
+type ToolEvent struct {
+	Timestamp time.Time
+	ToolName  string
+	ToolUseID string
+	Input     string
+	// Facts lifted from the structured toolUseResult.
+	URL         string
+	Command     string
+	FilePath    string
+	Query       string
+	ResultBytes int64
+	IsError     bool
+	Preview     string
+	Signals     []ContentSignal
+}
+
+// AttachmentEvent is harness-injected context: hook output, task reminders,
+// queued commands, attached files.
+type AttachmentEvent struct {
+	Timestamp time.Time
+	Kind      string
+	HookName  string
+	HookEvent string
+	Command   string
+	Preview   string
+	Signals   []ContentSignal
+}
+
+type PermissionChange struct {
+	Timestamp time.Time
+	Mode      string
 }
 
 type TranscriptMessage struct {

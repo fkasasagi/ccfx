@@ -76,7 +76,11 @@ func TestRenderCSV(t *testing.T) {
 	// Deliberately a hand-written literal, not derived from csvOutputs: it is an
 	// independent oracle for the writer table. Deriving it would make the
 	// comparison below tautological.
-	expectedFiles := []string{"sessions.csv", "timeline.csv", "tool_usage.csv", "file_changes.csv", "token_usage.csv", "history.csv", "conversations.csv"}
+	expectedFiles := []string{
+		"sessions.csv", "timeline.csv", "tool_usage.csv", "file_changes.csv",
+		"token_usage.csv", "history.csv", "conversations.csv",
+		"injection_events.csv", "injection_findings.csv",
+	}
 	if len(result.Files) != len(expectedFiles) {
 		t.Fatalf("files = %d, want %d", len(result.Files), len(expectedFiles))
 	}

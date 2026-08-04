@@ -250,6 +250,7 @@ HELP TOPICS
   ccfx help artifacts      Files and directories analyzed by ccfx
   ccfx help formats        Output format details (CSV, JSON, Markdown, HTML)
   ccfx help report         Report sections and what they contain
+  ccfx help injection      How to tell whether a session was prompt-injected
   ccfx help security       Security considerations and credential handling
   ccfx help timezone       Available timezone names (IANA Time Zone Database)
   ccfx help examples       More usage examples and forensic workflows
@@ -266,13 +267,15 @@ func showTopicHelp(topic string) {
 		showReportHelp()
 	case "security":
 		showSecurityHelp()
+	case "injection":
+		showInjectionHelp()
 	case "timezone", "timezones", "tz":
 		showTimezoneHelp()
 	case "examples":
 		showExamplesHelp()
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown help topic: %q\n\n", topic)
-		fmt.Fprintf(os.Stderr, "Available topics: artifacts, formats, report, security, timezone, examples\n")
+		fmt.Fprintf(os.Stderr, "Available topics: artifacts, formats, report, injection, security, timezone, examples\n")
 		os.Exit(1)
 	}
 }
@@ -341,10 +344,12 @@ func showFormatsHelp() {
            token_usage.csv          Daily token consumption breakdown
            history.csv              User command inputs from history.jsonl
            conversations.csv        Full conversation text, one row per message
+           injection_events.csv     Complete ingress/egress inventory
+           injection_findings.csv   Correlated injection findings, ranked
                                     All CSV files include UTF-8 BOM for
                                     Windows Excel compatibility.
 
-  md       report.md                13-section Markdown report. Suitable for
+  md       report.md                14-section Markdown report. Suitable for
                                     viewing on GitHub, in editors, or
                                     converting to PDF via pandoc.
 
@@ -419,6 +424,112 @@ func showReportHelp() {
                                  Included by default; disable with
                                  --extract-conversations=false.
                                  Can produce very large output.
+
+  14  Prompt Injection Triage    What entered each session, what the text
+                                 looked like, what left afterwards, and what
+                                 was changed. See 'ccfx help injection'.
+`)
+}
+
+func showInjectionHelp() {
+	fmt.Print(`INJECTION — How to tell whether a session was prompt-injected
+
+  A prompt injection is untrusted text that reaches the model and steers it.
+  Deciding whether one landed is a question about *provenance*: what entered
+  the context, what it said, and what the agent did next. Section 14 of the
+  report lays those out; this topic explains what to look at and why.
+
+  WHAT CCFX LOOKS AT
+
+  1. INGRESS — what entered the context
+     network_ingress    WebFetch (the URL and how many bytes came back),
+                        WebSearch queries, MCP tool results, and Bash
+                        commands that pull from the network (curl, wget,
+                        git clone, package installs).
+     file_ingress       Read/Grep/Glob, and Bash commands that read
+                        credential paths.
+     context_injection  Text the harness itself put in front of the model:
+                        hook output (a hook can inject arbitrary text on
+                        every turn), attached and pasted files, and the
+                        return value of a subagent.
+
+  2. SIGNALS — what the text looked like
+     Each ingress body is scanned while streaming; only matches are kept.
+
+     instruction-override       "ignore previous instructions", "your new
+                                task is"
+     authority-spoof            content posing as the harness, e.g. a
+                                <system-reminder> tag inside a fetched page
+     tool-call-injection        "<invoke name=..." — faking a tool call
+     secrecy-request            "do not tell the user"
+     credential-request         being told to cat ~/.ssh/id_ed25519 or .env
+     exfiltration-instruction   webhook.site, requestbin, "post the
+                                contents to"
+     permission-escalation      "--dangerously-skip-permissions"
+     hidden-characters          zero-width and bidi-override runs, which
+                                hide text from a human but not the model
+     scroll-hiding              a wall of blank lines pushing text below
+                                the fold
+     agent-directed-imperative  "if you are an AI reading this file..."
+     credential-target          a mention of a secret path (weak on its own)
+     encoded-payload            a long base64 run
+
+  3. EGRESS — what left
+     Bash commands that upload (curl with a body, wget --post, scp,
+     rsync to a remote, nc, /dev/tcp), pipes into a shell, and WebFetch
+     to an unusually long URL. ` + "`git push`" + ` is deliberately NOT treated as
+     egress: it is the most common write-out in ordinary work.
+
+  4. PERSISTENCE — what was left changed
+     Writes to settings.json, settings.local.json, CLAUDE.md, .mcp.json or
+     anything under .claude/, plus git remote changes. These outlive the
+     session that made them, so they are how an injection becomes durable.
+
+  5. CORRELATION — the part that matters
+     A signal on its own is a curiosity. A signal followed, within 30 tool
+     calls in the same session, by an upload or a config change is a lead.
+     Those become findings:
+
+       ingress-then-egress          tainted content in, data out
+       sensitive-read-then-egress   a secret read, then an upload
+       ingress-then-config-change   tainted content in, settings changed
+       signal-in-injected-context   a signal in hook-injected text, which
+                                    is potent because no user is in the loop
+       permission-mode-escalation   the session moved to bypassPermissions
+       high-signal-ingress          a strong signal with nothing after it
+
+  HOW TO READ IT
+
+    ccfx --format html
+    # open report.html, section 14:
+    #   Findings           -> what to open first, worst first
+    #   Sessions to Review -> which sessions carry signals or outbound calls
+    #   Flagged Content    -> the excerpt itself, in context
+    # injection_events.csv holds the complete inventory, findings or not.
+
+  FALSE POSITIVES ARE EXPECTED
+
+    These rules are symptoms, not verdicts. A session that *discusses*
+    prompt injection matches nearly all of them. So does reading source
+    code that mentions credential paths — ccfx's own code trips
+    credential-target. Always read the excerpt before concluding anything.
+
+  WHAT CCFX CANNOT SEE
+
+    Only what is on disk under the analyzed directory. Tool results that
+    predate the transcript format, content the model saw but the harness
+    did not record, and anything already deleted are all invisible.
+
+    The signal rules are a list of known-bad phrasings, in English and
+    Japanese. That is a blocklist, and a blocklist only recognises what
+    it already knows: an injection written in another language, or in
+    wording nobody has catalogued, passes it without a mark. Only the
+    first 1 MB of any single tool result is scanned.
+
+    An absence of findings is therefore not evidence that nothing
+    happened. The ingress inventory in injection_events.csv is the part
+    that does not depend on recognising the attack: read it when you
+    need to know what a session was exposed to, findings or not.
 `)
 }
 

@@ -29,14 +29,21 @@ func writeHTML(report *model.ForensicReport, outDir string, dict Dict, tz *time.
 		"boolYN": func(v bool) string {
 			return boolStr(v, dict)
 		},
-		"truncate": func(s string, n int) string {
-			if len(s) <= n {
-				return s
-			}
-			return s[:n] + "..."
-		},
+		"truncate": clip,
 		"sanitize": func(s string) string {
 			return strings.ReplaceAll(s, "\n", " ")
+		},
+		"flaggedEvents":      flaggedEvents,
+		"reviewableSessions": reviewableSessions,
+		"upper":              strings.ToUpper,
+		"sevClass": func(sev string) string {
+			switch sev {
+			case "high":
+				return "badge-red"
+			case "med":
+				return "badge-amber"
+			}
+			return "badge-muted"
 		},
 		"sortedDateKeys": func(m map[string]model.TokenSummary) []string {
 			return sortedKeys(m)
@@ -118,6 +125,11 @@ tr:hover{background:rgba(88,166,255,.05)}
 .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600}
 .badge-green{background:rgba(63,185,80,.15);color:var(--green)}
 .badge-red{background:rgba(248,81,73,.15);color:var(--red)}
+.badge-amber{background:rgba(210,153,34,.18);color:#d29922}
+.badge-muted{background:rgba(139,148,158,.15);color:var(--muted)}
+.warn{border-left:3px solid #d29922;background:rgba(210,153,34,.08);padding:.5rem .75rem;margin:.5rem 0;font-size:.85rem}
+.chain{color:var(--muted);font-size:.78rem}
+.excerpt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.75rem;word-break:break-word}
 .bar{height:20px;background:var(--accent);border-radius:3px;min-width:2px}
 .bar-container{display:flex;align-items:center;gap:8px}
 .bar-label{font-size:.8rem;color:var(--muted);min-width:60px;text-align:right}
@@ -382,6 +394,85 @@ code{background:var(--card);padding:2px 6px;border-radius:3px;font-size:.85rem;c
   });
 })();
 </script>
+
+<h2>14. {{.Dict.injection}}</h2>
+<p>{{.Dict.inj_intro}}</p>
+<div class="card">
+<div class="field"><span class="field-label">{{.Dict.inj_scanned}}</span><span class="field-value">{{.Report.Injection.ScannedResults}}</span></div>
+{{if .Report.Injection.SignalsDropped}}<div class="field"><span class="field-label">{{.Dict.inj_dropped}}</span><span class="field-value">{{.Report.Injection.SignalsDropped}}</span></div>{{end}}
+</div>
+{{$flagged := flaggedEvents .Report.Injection.Events}}
+{{$review := reviewableSessions .Report.Injection.Sessions}}
+{{if or .Report.Injection.Findings $review}}
+<p class="warn">{{.Dict.inj_caveat}}</p>
+
+{{if .Report.Injection.Findings}}
+<h3>{{.Dict.inj_findings}}</h3>
+<div class="scroll-table">
+<table class="filterable">
+<thead><tr>
+<th>{{.Dict.severity}}</th><th>{{.Dict.rule}}</th><th>{{.Dict.session_id}}</th><th>{{.Dict.project}}</th><th>{{.Dict.summary}}</th>
+</tr></thead>
+<tbody>
+{{range .Report.Injection.Findings}}<tr>
+<td><span class="badge {{sevClass .Severity}}">{{upper .Severity}}</span></td>
+<td><code>{{.Rule}}</code></td>
+<td><code>{{.SessionID}}</code></td>
+<td>{{.Project}}</td>
+<td>{{.Summary}}{{if .Evidence}}<div class="chain">{{range .Evidence}}→ {{.Category}}: {{truncate (sanitize .Detail) 90}} {{end}}</div>{{end}}</td>
+</tr>{{end}}
+</tbody>
+</table>
+</div>
+{{end}}
+
+{{if $review}}
+<h3>{{.Dict.inj_sessions}}</h3>
+<div class="scroll-table">
+<table class="filterable">
+<thead><tr>
+<th>{{.Dict.session_id}}</th><th>{{.Dict.project}}</th><th>{{.Dict.started_at}}</th>
+<th>{{.Dict.net_ingress}}</th><th>{{.Dict.file_in}}</th><th>{{.Dict.ctx_injection}}</th>
+<th>{{.Dict.egress}}</th><th>{{.Dict.config_changes}}</th><th>{{.Dict.signal_count}}</th><th>{{.Dict.top_severity}}</th>
+</tr></thead>
+<tbody>
+{{range $review}}<tr>
+<td><code>{{.SessionID}}</code></td><td>{{.Project}}</td><td>{{fmtTime .StartedAt}}</td>
+<td>{{.NetworkIngress}}</td><td>{{.FileIngress}}</td><td>{{.ContextInjection}}</td>
+<td>{{.Egress}}</td><td>{{.ConfigChanges}}</td><td>{{.SignalCount}}</td>
+<td>{{if .TopSeverity}}<span class="badge {{sevClass .TopSeverity}}">{{upper .TopSeverity}}</span>{{end}}</td>
+</tr>{{end}}
+</tbody>
+</table>
+</div>
+{{end}}
+
+{{if $flagged}}
+<h3>{{.Dict.inj_flagged}}</h3>
+<div class="scroll-table">
+<table class="filterable">
+<thead><tr>
+<th>{{.Dict.timestamp}}</th><th>{{.Dict.session_id}}</th><th>{{.Dict.category}}</th>
+<th>{{.Dict.detail}}</th><th>{{.Dict.rule}}</th><th>{{.Dict.excerpt}}</th>
+</tr></thead>
+<tbody>
+{{range $flagged}}{{$ev := .}}{{range .Signals}}<tr>
+<td>{{fmtTime $ev.Timestamp}}</td>
+<td><code>{{$ev.SessionID}}</code></td>
+<td>{{$ev.Category}}</td>
+<td>{{truncate (sanitize $ev.Detail) 110}}</td>
+<td><span class="badge {{sevClass .Severity}}">{{.Rule}}</span></td>
+<td class="excerpt">{{.Excerpt}}</td>
+</tr>{{end}}{{end}}
+</tbody>
+</table>
+</div>
+{{end}}
+
+<p class="filter-hint">{{.Dict.inj_full_inventory}}</p>
+{{else}}
+<p>{{.Dict.inj_none}}</p>
+{{end}}
 
 </body>
 </html>`

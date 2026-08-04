@@ -89,7 +89,8 @@ Run `ccfx help [topic]` to display detailed help for each topic.
 | `ccfx help` | Main help (flag list, usage examples, topic list) |
 | `ccfx help artifacts` | Location, format, and extracted information of analyzed files |
 | `ccfx help formats` | Details of the CSV / JSON / Markdown / HTML formats |
-| `ccfx help report` | Description of the report's 13 sections |
+| `ccfx help report` | Description of the report's 14 sections |
+| `ccfx help injection` | How to tell whether a session was prompt-injected: what is inspected, the signal taxonomy, and the false positives to expect |
 | `ccfx help security` | Handling of credentials, PII masking, read-only behavior |
 | `ccfx help timezone` | List of available IANA timezone names |
 | `ccfx help examples` | Workflow examples for IR, internal audit, security review, etc. |
@@ -115,6 +116,10 @@ Run `ccfx help [topic]` to display detailed help for each topic.
 # Output timestamps in Japan Standard Time (JST)
 ./ccfx --format all --timezone Asia/Tokyo --language ja
 
+# Investigate a suspected prompt injection (report section 14)
+./ccfx --format html
+# -> open report.html section 14: findings, then sessions to review, then the excerpts
+
 # Extract the full conversation of a specific session
 ./ccfx --format json --session-filter "a1b2c3d4-e5f6-7890-abcd-ef1234567890" --extract-conversations
 ```
@@ -128,7 +133,7 @@ When you request every format with `--format all` (or `--format csv,json,md,html
 ```
 ccfx-output/
 ├── report.json          # Full report (structured JSON)
-├── report.md            # Markdown report (13 sections)
+├── report.md            # Markdown report (14 sections)
 ├── report.html          # Self-contained HTML (embedded CSS, dark theme)
 ├── sessions.csv         # Session list
 ├── timeline.csv         # Activity timeline
@@ -136,7 +141,9 @@ ccfx-output/
 ├── file_changes.csv     # File change records
 ├── token_usage.csv      # Daily token consumption
 ├── history.csv          # Command input history
-└── conversations.csv    # Full conversation messages (one row per message)
+├── conversations.csv    # Full conversation messages (one row per message)
+├── injection_events.csv     # Complete ingress/egress inventory
+└── injection_findings.csv   # Correlated injection findings, ranked
 ```
 
 CSV files include a UTF-8 BOM, so they open without garbled characters in Windows Excel.
@@ -292,6 +299,7 @@ The generated report includes the following sections:
 | 11 | File History Statistics | File edit session count and total version count from `file-history/` |
 | 12 | Auxiliary Artifact Statistics | Counts of shell-snapshots, paste-cache, tasks, plans, custom-commands |
 | 13 | Conversations | Full conversation text (included by default; exclude with `--extract-conversations=false`) |
+| 14 | Prompt Injection Triage | What entered each session (fetched URLs, files read, hook-injected text), what the text looked like, what left afterwards, and what was changed — correlated and ranked. See `ccfx help injection` |
 
 ## Security Notes
 

@@ -29,6 +29,8 @@ var csvOutputs = []struct {
 	{"token_usage.csv", writeTokenUsageCSV},
 	{"history.csv", writeHistoryCSV},
 	{"conversations.csv", writeConversationsCSV},
+	{"injection_events.csv", writeInjectionEventsCSV},
+	{"injection_findings.csv", writeInjectionFindingsCSV},
 }
 
 func writeCSV(report *model.ForensicReport, outDir string, dict Dict, tz *time.Location) ([]OutputFile, error) {
@@ -212,6 +214,82 @@ func writeHistoryCSV(report *model.ForensicReport, path string, dict Dict, tz *t
 			h.Project,
 			strconv.FormatBool(h.IsShellCommand),
 			h.Display,
+		})
+	}
+	w.Flush()
+	return w.Error()
+}
+
+// writeInjectionEventsCSV is the complete ingress/egress inventory. It is the
+// one place everything appears — the rendered sections deliberately show only
+// what carries a signal.
+func writeInjectionEventsCSV(report *model.ForensicReport, path string, dict Dict, tz *time.Location) error {
+	f, w, err := newCSVFile(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	w.Write([]string{
+		dict["timestamp"], dict["session_id"], dict["project"], dict["category"],
+		dict["tool_name"], dict["detail"], dict["file_size"], dict["rule"],
+		dict["severity"], dict["excerpt"], dict["preview"],
+	})
+
+	for _, ev := range report.Injection.Events {
+		var rules, sevs, excerpts []string
+		for _, s := range ev.Signals {
+			rules = append(rules, s.Rule)
+			sevs = append(sevs, s.Severity)
+			excerpts = append(excerpts, s.Excerpt)
+		}
+		w.Write([]string{
+			formatTimeIn(ev.Timestamp, tz),
+			ev.SessionID,
+			ev.Project,
+			ev.Category,
+			ev.ToolName,
+			ev.Detail,
+			strconv.FormatInt(ev.Bytes, 10),
+			strings.Join(rules, " "),
+			strings.Join(sevs, " "),
+			strings.Join(excerpts, " ⏐ "),
+			ev.Preview,
+		})
+	}
+	w.Flush()
+	return w.Error()
+}
+
+func writeInjectionFindingsCSV(report *model.ForensicReport, path string, dict Dict, tz *time.Location) error {
+	f, w, err := newCSVFile(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	w.Write([]string{
+		dict["severity"], dict["rule"], dict["session_id"], dict["project"],
+		dict["timestamp"], dict["summary"], dict["detail"],
+	})
+
+	for _, fi := range report.Injection.Findings {
+		var when time.Time
+		var chain []string
+		for _, ev := range fi.Evidence {
+			if when.IsZero() {
+				when = ev.Timestamp
+			}
+			chain = append(chain, ev.Category+": "+ev.Detail)
+		}
+		w.Write([]string{
+			fi.Severity,
+			fi.Rule,
+			fi.SessionID,
+			fi.Project,
+			formatTimeIn(when, tz),
+			fi.Summary,
+			strings.Join(chain, " → "),
 		})
 	}
 	w.Flush()

@@ -45,6 +45,7 @@ func Analyze(raw *model.RawData, opts *Options) *model.ForensicReport {
 	report.CommandHistory = filterHistory(raw.HistoryEntries, opts)
 	report.FileHistoryStats = raw.FileHistStats
 	report.MiscStats = raw.MiscStats
+	report.Injection = buildInjection(raw, projectMap, opts)
 
 	if opts.ExtractConversations {
 		report.Conversations = extractConversations(raw, projectMap, opts)
@@ -129,6 +130,35 @@ func redact(report *model.ForensicReport) {
 	report.UserIdentity.Email = redactEmail(report.UserIdentity.Email)
 	report.UserIdentity.AccountUUID = redactUUID(report.UserIdentity.AccountUUID)
 	report.UserIdentity.OrganizationUUID = redactUUID(report.UserIdentity.OrganizationUUID)
+
+	// Injection previews and excerpts are verbatim quotes of whatever entered the
+	// session, so they are exactly where stray identifiers turn up.
+	for i := range report.Injection.Events {
+		redactEvent(&report.Injection.Events[i])
+	}
+	for i := range report.Injection.Findings {
+		f := &report.Injection.Findings[i]
+		f.Summary = redactText(f.Summary)
+		for j := range f.Evidence {
+			redactEvent(&f.Evidence[j])
+		}
+	}
+}
+
+func redactEvent(ev *model.InjectionEvent) {
+	ev.Detail = redactText(ev.Detail)
+	ev.Preview = redactText(ev.Preview)
+	for i := range ev.Signals {
+		ev.Signals[i].Excerpt = redactText(ev.Signals[i].Excerpt)
+	}
+}
+
+func redactText(s string) string {
+	if s == "" {
+		return ""
+	}
+	s = emailRegex.ReplaceAllStringFunc(s, redactEmail)
+	return uuidRegex.ReplaceAllStringFunc(s, redactUUID)
 }
 
 func redactEmail(email string) string {

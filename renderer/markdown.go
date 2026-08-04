@@ -200,7 +200,7 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict, tz *t
 		for _, h := range hist {
 			cmd := h.Display
 			if len(cmd) > 80 {
-				cmd = cmd[:80] + "..."
+				cmd = clip(cmd, 80)
 			}
 			cmd = strings.ReplaceAll(cmd, "|", "\\|")
 			cmd = strings.ReplaceAll(cmd, "\n", " ")
@@ -242,7 +242,7 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict, tz *t
 				}
 				content := msg.Content
 				if len(content) > 500 {
-					content = content[:500] + "..."
+					content = clip(content, 500)
 				}
 				content = strings.ReplaceAll(content, "\n", " ")
 				b.WriteString(fmt.Sprintf("- [%s] %s%s\n", ft(msg.Timestamp), prefix, content))
@@ -251,11 +251,118 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict, tz *t
 		}
 	}
 
+	writeInjectionMarkdown(&b, report, dict, ft)
+
 	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
 		return nil, err
 	}
 
 	return []OutputFile{{Path: path, Size: fileSize(path)}}, nil
+}
+
+// writeInjectionMarkdown renders the triage smallest-first: the findings a human
+// should open, then the sessions they live in, then the flagged content itself.
+// The full inventory stays in the CSV — it runs to thousands of rows.
+func writeInjectionMarkdown(b *strings.Builder, report *model.ForensicReport, dict Dict, ft func(time.Time) string) {
+	inj := report.Injection
+
+	b.WriteString(fmt.Sprintf("## 14. %s\n\n", dict["injection"]))
+	b.WriteString(dict["inj_intro"] + "\n\n")
+	b.WriteString(fmt.Sprintf("- **%s**: %d\n", dict["inj_scanned"], inj.ScannedResults))
+	if inj.SignalsDropped > 0 {
+		b.WriteString(fmt.Sprintf("- **%s**: %d\n", dict["inj_dropped"], inj.SignalsDropped))
+	}
+	b.WriteString("\n")
+
+	if len(inj.Findings) == 0 && len(inj.Sessions) == 0 {
+		b.WriteString(dict["inj_none"] + "\n\n")
+		return
+	}
+	b.WriteString("> " + dict["inj_caveat"] + "\n\n")
+
+	if len(inj.Findings) > 0 {
+		b.WriteString(fmt.Sprintf("### %s\n\n", dict["inj_findings"]))
+		b.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
+			dict["severity"], dict["rule"], dict["session_id"], dict["project"], dict["summary"]))
+		b.WriteString("|---|---|---|---|---|\n")
+		for _, f := range inj.Findings {
+			b.WriteString(fmt.Sprintf("| %s | %s | `%.8s` | %s | %s |\n",
+				strings.ToUpper(f.Severity), f.Rule, f.SessionID, f.Project, mdCell(f.Summary)))
+		}
+		b.WriteString("\n")
+	}
+
+	if reviewable := reviewableSessions(inj.Sessions); len(reviewable) > 0 {
+		b.WriteString(fmt.Sprintf("### %s\n\n", dict["inj_sessions"]))
+		b.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s | %s | %s | %s | %s |\n",
+			dict["session_id"], dict["project"], dict["started_at"], dict["net_ingress"],
+			dict["file_in"], dict["ctx_injection"], dict["egress"], dict["config_changes"], dict["top_severity"]))
+		b.WriteString("|---|---|---|---|---|---|---|---|---|\n")
+		for _, s := range reviewable {
+			b.WriteString(fmt.Sprintf("| `%.8s` | %s | %s | %d | %d | %d | %d | %d | %s |\n",
+				s.SessionID, s.Project, ft(s.StartedAt), s.NetworkIngress, s.FileIngress,
+				s.ContextInjection, s.Egress, s.ConfigChanges, strings.ToUpper(s.TopSeverity)))
+		}
+		b.WriteString("\n")
+	}
+
+	flagged := flaggedEvents(inj.Events)
+	if len(flagged) > 0 {
+		b.WriteString(fmt.Sprintf("### %s\n\n", dict["inj_flagged"]))
+		b.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s | %s |\n",
+			dict["timestamp"], dict["session_id"], dict["category"], dict["detail"], dict["rule"], dict["excerpt"]))
+		b.WriteString("|---|---|---|---|---|---|\n")
+		for _, ev := range flagged {
+			for _, sig := range ev.Signals {
+				b.WriteString(fmt.Sprintf("| %s | `%.8s` | %s | %s | %s (%s) | %s |\n",
+					ft(ev.Timestamp), ev.SessionID, ev.Category, mdCell(ev.Detail),
+					sig.Rule, sig.Severity, mdCell(sig.Excerpt)))
+			}
+		}
+		b.WriteString("\n")
+	}
+
+	b.WriteString(dict["inj_full_inventory"] + "\n\n")
+}
+
+// reviewableSessions drops the sessions with nothing to look at: on a real
+// machine they are the overwhelming majority.
+func reviewableSessions(sessions []model.SessionTriage) []model.SessionTriage {
+	var out []model.SessionTriage
+	for _, s := range sessions {
+		if s.SignalCount > 0 || s.Egress > 0 {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func flaggedEvents(events []model.InjectionEvent) []model.InjectionEvent {
+	var out []model.InjectionEvent
+	for _, ev := range events {
+		if len(ev.Signals) > 0 {
+			out = append(out, ev)
+		}
+	}
+	return out
+}
+
+// clip cuts to a byte budget without splitting a rune. Slicing a string at an
+// arbitrary byte offset produces invalid UTF-8, which any non-ASCII report will
+// hit — and a broken byte makes the whole HTML file unparseable.
+func clip(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	for n > 0 && s[n]&0xC0 == 0x80 {
+		n--
+	}
+	return s[:n] + "..."
+}
+
+func mdCell(s string) string {
+	s = strings.ReplaceAll(s, "|", "\\|")
+	return strings.ReplaceAll(s, "\n", " ")
 }
 
 func writeField(b *strings.Builder, label, value string) {

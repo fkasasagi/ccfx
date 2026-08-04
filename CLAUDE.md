@@ -41,7 +41,14 @@ so use a fresh `--output` dir or `--force` when iterating.
 ~/.claude/ → collector.Collect() → *model.RawData → analyzer.Analyze() → *model.ForensicReport → renderer.Render() → files
 ```
 
-Every type lives in `model/model.go`; the three packages never import each other, only `model`.
+Every type lives in `model/model.go`. The three pipeline packages never import each other — only
+`model` and `detect`, both leaves.
+
+`detect/` holds the prompt-injection rule table and `Scan()`. It sits outside the pipeline because
+both ends need it: `collector` scans tool-result bodies **while streaming** (they are far too large
+to retain — that is the whole reason the scan lives there and not in `analyzer`), and only the
+matches survive into `RawData`. `analyzer/injection.go` then correlates those signals with what
+happened next. Rules are symptoms, never verdicts; see `ccfx help injection`.
 
 - **collector/** — one file per artifact type, each returning into `RawData`. Failures are
   *non-fatal by design*: `Collect()` logs them only under `--verbose` and continues (a forensic
@@ -92,9 +99,23 @@ Every type lives in `model/model.go`; the three packages never import each other
 - **Three timestamp encodings**: `history.jsonl` and `sessions/*.json` use Unix **milliseconds**
   (`safeUnixMilli` maps `<= 0` to the zero time), transcripts use RFC3339. Everything is normalized
   to `time.Time` in the collector, and only converted to a `--timezone` at render time.
-- **Tool input is truncated to 200 chars** in `collector/transcripts.go`. `analyzer/filetracking.go`
-  parses `file_path` out of that truncated JSON, so file-change tracking only works while
-  `file_path` appears early in the tool input. Widen the truncation if that assumption breaks.
+- **Never slice a string at a byte offset to truncate it.** Use `clip()` in `renderer/markdown.go`
+  (exposed to templates as `truncate`). A cut mid-rune emits invalid UTF-8, and one bad byte makes
+  the entire `report.html` unparseable — which is silent until someone tries to read the file.
+- **A tool call and its result arrive on different transcript lines**, joined by `tool_use_id`.
+  `collector/transcripts.go` keeps a pending map to pair them; the result body is scanned and
+  dropped, never stored. Tool inputs are kept up to 4 KB (they were once cut at 200 chars, which
+  silently broke `file_path` extraction in `analyzer/filetracking.go`).
+- **The richest injection evidence is in the line types the pipeline once ignored**: `toolUseResult`
+  (WebFetch's `url`/`bytes`, Bash's `stdout`, Read's `file`) and `attachment` lines — especially
+  `hook_additional_context`, which is arbitrary text a hook injects on every turn with no user in
+  the loop.
+- **Detector tuning is a signal-to-noise problem, not a coverage problem.** Every threshold in
+  `analyzer/injection.go` exists because the naive version buried the real findings: permission-mode
+  lines are written routinely so only *transitions* count, `git push` is not egress, a mention of a
+  credential path is `low` (ccfx's own source trips it) while an instruction to fetch one is `high`,
+  and one ingress yields at most one finding. Measure against a real `~/.claude` before loosening
+  any of them.
 - **Project path decoding is lossy**: directory names encode `/` as `-`. `buildProjectMap` prefers
   the authoritative real paths from the backup file and only falls back to naive `-` → `/`
   substitution, which mangles paths that legitimately contain `-`.
@@ -102,7 +123,7 @@ Every type lives in `model/model.go`; the three packages never import each other
   marshaling. A test asserts no zero-time string survives.
 - **CSV files start with a UTF-8 BOM** (`newCSVFile`) for Windows Excel; tests assert it, and any
   reader must skip 3 bytes before `csv.NewReader`.
-- **Markdown section numbers 1–13 are hardcoded** in `markdown.go` and asserted by
+- **Markdown section numbers 1–14 are hardcoded** in `markdown.go` and asserted by
   `TestRenderMarkdown`; renumber deliberately.
 - **HTML is one big `text/template` string** with a `FuncMap` supplying the arithmetic Go templates
   lack (`toFloat`/`mulFloat`/`divFloat`/`barWidth`/`maxToolCalls`). Output must stay self-contained —
