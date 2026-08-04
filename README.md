@@ -1,36 +1,38 @@
-[![English](https://img.shields.io/badge/README-English-blue)](README.md)
-[![日本語](https://img.shields.io/badge/README-%E6%97%A5%E6%9C%AC%E8%AA%9E-lightgrey)](README.ja.md)
+[![English](https://img.shields.io/badge/README-English-lightgrey)](README.en.md)
+[![日本語](https://img.shields.io/badge/README-%E6%97%A5%E6%9C%AC%E8%AA%9E-red)](README.md)
 
 # ccfx - Claude Code Forensics eXtractor
 
-A digital forensics tool that analyzes the local artifacts Claude Code leaves behind (`~/.claude/`) and reports **who** used Claude Code, **when**, and **how**.
+Claude Code が残すローカルアーティファクト (`~/.claude/`) を解析し、**誰が・いつ・どのように** Claude Code を使ったかをレポートするデジタルフォレンジックツール。
 
-A single Go binary with zero external dependencies. Supports Linux / macOS (Windows is experimental).
+Go 製シングルバイナリ。外部依存ゼロ。**Linux / macOS / Windows 対応。**
 
-> **⚠ Note:** This tool is experimental. It does not guarantee the accuracy of its output. Use it at your own risk.
+> **Windows について:** ドライブレターパス (`C:\Users\...`) と `--timezone` の IANA 名 (`Asia/Tokyo` 等) に対応しています (タイムゾーンデータはバイナリに埋め込み済み)。`-ac` のアーカイブ取得のみ、シンボリックリンク保持のため管理者権限または開発者モードが必要です。
+
+> **⚠ 注意:** 本ツールは検証段階です。出力内容の正確性を保証するものではありません。自己責任でご使用ください。
 >
-> This tool is intended for forensic analysis, internal auditing, and security review by users with proper authorization. Do not use it to collect or analyze other people's data without consent.
+> 本ツールは正当な権限を持つユーザーによるフォレンジック分析・内部監査・セキュリティレビューを目的としています。他者のデータを無断で収集・解析する行為に使用しないでください。
 
 ---
 
-## Analyzed Artifacts
+## 分析対象アーティファクト
 
-Claude Code leaves the following files under `~/.claude/` (Windows: `%USERPROFILE%\.claude\`). ccfx reads them non-destructively and generates a report.
+Claude Code は `~/.claude/` (Windows: `%USERPROFILE%\.claude\`) に以下のファイルを残します。ccfx はこれらを非破壊で読み取り、レポートを生成します。
 
-| File / Directory | Format | What ccfx Extracts |
+| ファイル / ディレクトリ | 形式 | ccfx が抽出する情報 |
 |---|---|---|
-| `history.jsonl` | JSONL | Command history entered by the user, timestamps, session IDs |
-| `sessions/<pid>.json` | JSON | Session metadata (PID, CWD, start/end time, version, entrypoint) |
-| `projects/<encoded-path>/<uuid>.jsonl` | JSONL | **Full conversation text**, tool calls (name and arguments), model, token usage, Git branch |
-| `backups/.claude.json.backup.*` | JSON | User email, organization UUID, subscription info, per-project cost |
-| `settings.json` / `settings.local.json` | JSON | Permissions (allow/deny rules), hook definitions, effort level |
-| `.credentials.json` | JSON | **Existence detection only** for OAuth tokens (values are never read) |
-| `file-history/<session>/<hash>@v<n>` | Various | Statistics on the number of file edit versions |
-| `shell-snapshots/`, `paste-cache/`, `tasks/`, `plans/` | Various | Counts of auxiliary metadata |
+| `history.jsonl` | JSONL | ユーザーが入力したコマンド履歴、タイムスタンプ、セッション ID |
+| `sessions/<pid>.json` | JSON | セッションメタデータ (PID, CWD, 開始/終了時刻, バージョン, entrypoint) |
+| `projects/<encoded-path>/<uuid>.jsonl` | JSONL | **会話全文**、ツール呼び出し (名前・引数)、モデル、トークン使用量、Git ブランチ |
+| `backups/.claude.json.backup.*` | JSON | ユーザー email、組織 UUID、サブスクリプション情報、プロジェクト別コスト |
+| `settings.json` / `settings.local.json` | JSON | パーミッション (allow/deny ルール)、フック定義、effort level |
+| `.credentials.json` | JSON | OAuth トークンの**存在検出のみ** (値は一切読みません) |
+| `file-history/<session>/<hash>@v<n>` | 各種 | ファイル編集バージョン数の統計 |
+| `shell-snapshots/`, `paste-cache/`, `tasks/`, `plans/` | 各種 | 補助メタデータのカウント |
 
-## Installation
+## インストール
 
-### Build from source (Go 1.22+)
+### ソースからビルド (Go 1.22+)
 
 ```bash
 git clone https://github.com/fkasasagi/ccfx.git
@@ -38,7 +40,7 @@ cd ccfx
 go build -o ccfx .
 ```
 
-### Cross-compilation
+### クロスコンパイル
 
 ```bash
 # Linux
@@ -51,7 +53,7 @@ GOOS=darwin GOARCH=arm64 go build -o ccfx-darwin .
 GOOS=windows GOARCH=amd64 go build -o ccfx.exe .
 ```
 
-## Usage
+## 使い方
 
 ```
 ccfx [flags]
@@ -59,104 +61,104 @@ ccfx help [topic]
 ccfx version
 ```
 
-### Flags
+### フラグ一覧
 
-| Flag | Default | Description |
+| フラグ | デフォルト | 説明 |
 |---|---|---|
-| `--path PATH` | auto-detect (`~/.claude/`) | Path to the directory to analyze |
-| `--format csv,json,md,html,all` | `all` | Output format (comma-separated for multiple, `all` for every format) |
-| `--output DIR` | `./ccfx-output` | Output directory |
-| `--language en\|ja` | `en` | Report language (English / Japanese) |
-| `--extract-conversations` | on | Include the full conversation text in the report (`--extract-conversations=false` to disable) |
-| `--session-filter UUID` | - | Analyze only a specific session |
-| `--project-filter PATH` | - | Analyze only a specific project |
-| `--date-from YYYY-MM-DD` | - | Limit to entries on or after this date |
-| `--date-to YYYY-MM-DD` | - | Limit to entries on or before this date |
-| `--timezone ZONE` | `UTC` | IANA timezone name (e.g. `Asia/Tokyo`, `America/New_York`) |
-| `--redact-pii` | off | Mask emails and UUIDs |
-| `-ac` | off | Also write `claude-acquisition.zip`, a verbatim zip of the source directory with file timestamps, empty directories, and symlinks preserved. **Contains `.credentials.json` in cleartext — see [Security Notes](#security-notes)** |
-| `--force` | off | Overwrite existing files in the output directory (aborts if not specified) |
-| `--verbose` | off | Emit debug logs |
-| `--version` | - | Show version |
-| `--help` | - | Show help |
+| `--path PATH` | 自動検出 (`~/.claude/`) | 解析対象ディレクトリのパス |
+| `--format csv,json,md,html,all` | `all` | 出力フォーマット (カンマ区切りで複数指定可、`all` で全形式) |
+| `--output DIR` | `./ccfx-output` | 出力先ディレクトリ |
+| `--language en\|ja` | `en` | レポート言語 (英語 / 日本語) |
+| `--extract-conversations` | on | 会話の全文をレポートに含める (`--extract-conversations=false` で無効化) |
+| `--session-filter UUID` | - | 特定セッションのみ分析 |
+| `--project-filter PATH` | - | 特定プロジェクトのみ分析 |
+| `--date-from YYYY-MM-DD` | - | この日付以降に限定 |
+| `--date-to YYYY-MM-DD` | - | この日付以前に限定 |
+| `--timezone ZONE` | `UTC` | IANA タイムゾーン名 (例: `Asia/Tokyo`, `America/New_York`) |
+| `--redact-pii` | off | email・UUID をマスク |
+| `-ac` | off | `claude-acquisition.zip` も出力する。対象ディレクトリを丸ごと zip 化し、ファイルのタイムスタンプ・空ディレクトリ・シンボリックリンクを維持する。**`.credentials.json` を平文のまま含む — [セキュリティに関する注意](#セキュリティに関する注意)を参照** |
+| `--force` | off | 出力先に既存ファイルがあっても上書きする (未指定時は中止) |
+| `--verbose` | off | デバッグログ出力 |
+| `--version` | - | バージョン表示 |
+| `--help` | - | ヘルプ表示 |
 
-### Help System
+### ヘルプシステム
 
-Run `ccfx help [topic]` to display detailed help for each topic.
+`ccfx help [topic]` でトピック別の詳細ヘルプを表示できます。
 
-| Command | Content |
+| コマンド | 内容 |
 |---|---|
-| `ccfx help` | Main help (flag list, usage examples, topic list) |
-| `ccfx help artifacts` | Location, format, and extracted information of analyzed files |
-| `ccfx help formats` | Details of the CSV / JSON / Markdown / HTML formats |
-| `ccfx help report` | Description of the report's 14 sections |
-| `ccfx help injection` | How to tell whether a session was prompt-injected: what is inspected, the signal taxonomy, and the false positives to expect |
-| `ccfx help security` | Handling of credentials, PII masking, read-only behavior |
-| `ccfx help timezone` | List of available IANA timezone names |
-| `ccfx help examples` | Workflow examples for IR, internal audit, security review, etc. |
+| `ccfx help` | メインヘルプ (フラグ一覧、使用例、トピック一覧) |
+| `ccfx help artifacts` | 解析対象ファイルの場所・形式・抽出情報 |
+| `ccfx help formats` | CSV / JSON / Markdown / HTML 各フォーマットの詳細 |
+| `ccfx help report` | レポート 14 セクションの内容説明 |
+| `ccfx help injection` | セッションがプロンプトインジェクションを受けたかの判断方法: 何を見るか、シグナルの分類、想定される偽陽性 |
+| `ccfx help security` | 認証情報の扱い、PII マスク、read-only 動作 |
+| `ccfx help timezone` | 使用可能な IANA タイムゾーン名の一覧 |
+| `ccfx help examples` | IR・内部監査・セキュリティレビュー等のワークフロー例 |
 
-### Basic Usage
+### 基本的な使い方
 
 ```bash
-# JSON report only (default)
+# JSON レポートのみ (デフォルト)
 ./ccfx
 
-# Output every format at once
+# 全フォーマットを一括出力
 ./ccfx --format all
 
-# Output every format in Japanese
+# 全フォーマットを日本語で出力
 ./ccfx --format all --language ja
 
-# Analyze Claude data from another machine (e.g. a mounted USB drive)
+# 別マシンの Claude データを解析 (USB マウント等)
 ./ccfx --path /mnt/evidence/home/user/.claude --format json,html
 
-# Report a specific period with PII masking
+# 特定期間に絞って PII マスク付きでレポート
 ./ccfx --format html --date-from 2026-05-01 --date-to 2026-05-31 --redact-pii
 
-# Output timestamps in Japan Standard Time (JST)
+# タイムスタンプを日本時間 (JST) で出力
 ./ccfx --format all --timezone Asia/Tokyo --language ja
 
-# Investigate a suspected prompt injection (report section 14)
-./ccfx --format html
-# -> open report.html section 14: findings, then sessions to review, then the excerpts
+# プロンプトインジェクションの疑いを調べる (レポートのセクション 14)
+./ccfx --format html --language ja
+# → report.html のセクション 14 で、検出事項 → 要確認セッション → 該当箇所の抜粋の順に読む
 
-# Extract the full conversation of a specific session
+# 特定セッションの会話全文を抽出
 ./ccfx --format json --session-filter "a1b2c3d4-e5f6-7890-abcd-ef1234567890" --extract-conversations
 ```
 
-When `--timezone` is specified, every timestamp in the output is converted and the column names are suffixed with the timezone abbreviation (e.g. `Started At (JST)`).
+`--timezone` を指定すると、全出力のタイムスタンプが変換され、カラム名にタイムゾーン略称が付きます (例: `Started At (JST)`)。
 
-## Output Files
+## 出力ファイル
 
-When you request every format with `--format all` (or `--format csv,json,md,html`):
+`--format all` (または `--format csv,json,md,html`) で全フォーマットを指定した場合:
 
 ```
 ccfx-output/
-├── report.json          # Full report (structured JSON)
-├── report.md            # Markdown report (14 sections)
-├── report.html          # Self-contained HTML (embedded CSS, dark theme)
-├── sessions.csv         # Session list
-├── timeline.csv         # Activity timeline
-├── tool_usage.csv       # Tool usage statistics
-├── file_changes.csv     # File change records
-├── token_usage.csv      # Daily token consumption
-├── history.csv          # Command input history
-├── conversations.csv    # Full conversation messages (one row per message)
-├── injection_events.csv     # Complete ingress/egress inventory
-└── injection_findings.csv   # Correlated injection findings, ranked
+├── report.json          # 完全なレポート (構造化 JSON)
+├── report.md            # Markdown レポート (14 セクション)
+├── report.html          # 自己完結型 HTML (CSS 埋め込み、ダークテーマ)
+├── sessions.csv         # セッション一覧
+├── timeline.csv         # アクティビティタイムライン
+├── tool_usage.csv       # ツール使用統計
+├── file_changes.csv     # ファイル変更記録
+├── token_usage.csv      # 日別トークン消費量
+├── history.csv          # コマンド入力履歴
+├── conversations.csv    # 会話メッセージ全文 (1 メッセージ 1 行)
+├── injection_events.csv     # 入出力の全件一覧
+└── injection_findings.csv   # 相関を取った検出事項 (重大度順)
 ```
 
-CSV files include a UTF-8 BOM, so they open without garbled characters in Windows Excel.
+CSV には UTF-8 BOM が付いているため、Windows Excel で文字化けせずに開けます。
 
-With `-ac`, one more file is written alongside them:
+`-ac` を付けると、上記に加えてもう1ファイル出力されます。
 
 ```
-└── claude-acquisition.zip   # Verbatim copy of the source directory (timestamps preserved)
+└── claude-acquisition.zip   # 対象ディレクトリの完全な複製 (タイムスタンプ維持)
 ```
 
-## Output Examples
+## 出力例
 
-### JSON (excerpt)
+### JSON (抜粋)
 
 ```json
 {
@@ -252,9 +254,9 @@ Timestamp (UTC),Session ID,Project,Shell?,Command
 2026-05-13 09:42:15,c4d5e6f7-a8b9-0123-cdef-456789abcdef,/home/user/api,true,!git status
 ```
 
-The `Shell?` column is `true` when the entry was run as a subshell command via the prompt's `!` bang-mode, and `false` for regular prompts and slash commands.
+`Shell?` 列は、プロンプトの `!` バンモードでサブシェル実行されたエントリのとき `true`、通常プロンプトやスラッシュコマンドのとき `false` になります。
 
-### Markdown (beginning)
+### Markdown (冒頭)
 
 ```markdown
 # Claude Code Forensic Analysis Report
@@ -278,73 +280,73 @@ The `Shell?` column is `true` when the entry was run as a subshell command via t
 
 ### HTML
 
-A self-contained HTML file (embedded CSS and JS, no external resources) is generated. It features a dark theme, collapsible tables, CSS bar charts, and **per-column filter boxes** on the large tables (Sessions, Timeline, File Changes, Command History, Conversations) for live row filtering. It opens directly in a browser and is print-ready (`@media print`; filters are hidden when printing).
+自己完結型の HTML ファイル (CSS・JS 埋め込み、外部リソース不要) が生成されます。ダークテーマ、折りたたみ可能テーブル、CSS バーチャートに加え、大きなテーブル (Sessions / Timeline / File Changes / Command History / Conversations) には**各カラムのフィルター入力欄**が付き、その場で行を絞り込めます。ブラウザで直接開け、印刷にも対応 (`@media print`。印刷時はフィルターを非表示)。
 
-## Report Sections
+## レポートセクション
 
-The generated report includes the following sections:
+生成されるレポートには以下のセクションが含まれます:
 
-| # | Section | Content |
+| # | セクション | 内容 |
 |---|---|---|
-| 1 | User Identity | User email, organization info, subscription tier |
-| 2 | Sessions | List of all sessions (start time, duration, model, message count) |
-| 3 | Activity Timeline | Chronological user actions, tool calls, and responses |
-| 4 | Projects | Per-project summary (session count, first/last use) |
-| 5 | Tool Usage Statistics | Call count and session count per tool |
-| 6 | Token Consumption | Token consumption (by model, by project, by date) |
-| 7 | File Modifications | File changes made by the Edit/Write tools |
-| 8 | Permission & Security | deny/allow rules, hook definitions, per-session permission mode |
-| 9 | Credential Discovery | Existence detection of `.credentials.json` (token values are not read) |
-| 10 | Command History | Command input history from `history.jsonl` (timestamp, session, project, and a `Shell?` flag marking `!` bang-mode subshell commands) |
-| 11 | File History Statistics | File edit session count and total version count from `file-history/` |
-| 12 | Auxiliary Artifact Statistics | Counts of shell-snapshots, paste-cache, tasks, plans, custom-commands |
-| 13 | Conversations | Full conversation text (included by default; exclude with `--extract-conversations=false`) |
-| 14 | Prompt Injection Triage | What entered each session (fetched URLs, files read, hook-injected text), what the text looked like, what left afterwards, and what was changed — correlated and ranked. See `ccfx help injection` |
+| 1 | User Identity | ユーザー email、組織情報、サブスクリプションティア |
+| 2 | Sessions | 全セッション一覧 (開始時刻、所要時間、モデル、メッセージ数) |
+| 3 | Activity Timeline | 時系列のユーザー操作・ツール呼び出し・応答 |
+| 4 | Projects | プロジェクト別サマリー (セッション数、初回/最終使用) |
+| 5 | Tool Usage Statistics | ツール別の呼び出し回数・使用セッション数 |
+| 6 | Token Consumption | トークン消費量 (モデル別、プロジェクト別、日付別) |
+| 7 | File Modifications | Edit/Write ツールによるファイル変更記録 |
+| 8 | Permission & Security | deny/allow ルール、フック定義、セッション別パーミッションモード |
+| 9 | Credential Discovery | `.credentials.json` の存在検出 (トークン値は読みません) |
+| 10 | Command History | `history.jsonl` のコマンド入力履歴 (タイムスタンプ、セッション、プロジェクト、`!` バンモードのサブシェル実行を示す `Shell?` フラグ) |
+| 11 | File History Statistics | `file-history/` のファイル編集セッション数・バージョン総数 |
+| 12 | Auxiliary Artifact Statistics | shell-snapshots, paste-cache, tasks, plans, custom-commands の件数 |
+| 13 | Conversations | 会話全文 (デフォルトで含む。`--extract-conversations=false` で除外) |
+| 14 | Prompt Injection Triage | 各セッションに何が入り (取得した URL・読んだファイル・hook が注入したテキスト)、そのテキストがどう見え、その後に何が出て、何が変更されたか。相関を取って重大度順に提示する。`ccfx help injection` を参照 |
 
-## Security Notes
+## セキュリティに関する注意
 
-- **Credential token values are never read.** For `.credentials.json`, only the file's existence, size, and modification time are recorded.
-- **`-ac` is the one exception.** The acquisition archive is a byte-for-byte copy of the source directory, so it contains `.credentials.json` with the OAuth token in cleartext, and `--redact-pii` does not apply to it. Whoever holds the archive can authenticate as the user it came from. Encrypt it in transit and at rest, and omit `-ac` when the report alone answers the question.
-- With `--redact-pii`, email addresses and UUIDs in the output report are masked (`us***@example.com`, `a1b2c3d4-****-****-****-************`).
-- The contents of the input directory (`~/.claude/`) are never modified (read-only analysis).
+- **認証トークンの値は一切読み取りません。** `.credentials.json` についてはファイルの存在、サイズ、更新日時のみを記録します。
+- **`-ac` だけは例外です。** 取得アーカイブは対象ディレクトリのバイト単位の複製なので、`.credentials.json` を平文のまま含み、`--redact-pii` も適用されません。アーカイブを手にした者は取得元ユーザーとして認証できてしまいます。受け渡し時・保管時とも暗号化し、レポートだけで用が足りるなら `-ac` は付けないでください。
+- `--redact-pii` を使うと、出力レポート中の email アドレスと UUID がマスクされます (`us***@example.com`, `a1b2c3d4-****-****-****-************`)。
+- 入力ディレクトリ (`~/.claude/`) の内容は一切変更しません (read-only 解析)。
 
-## Project Structure
+## プロジェクト構成
 
 ```
 ccfx/
-├── main.go              # CLI entry point
-├── model/model.go       # Data model definitions
-├── collector/           # Artifact collection (8 parsers)
-│   ├── collector.go     #   Orchestrator
+├── main.go              # CLI エントリポイント
+├── model/model.go       # データモデル定義
+├── collector/           # アーティファクト収集 (8 パーサー)
+│   ├── collector.go     #   オーケストレーター
 │   ├── history.go       #   history.jsonl
 │   ├── sessions.go      #   sessions/<pid>.json
 │   ├── transcripts.go   #   projects/<path>/<uuid>.jsonl
 │   ├── backups.go       #   backups/.claude.json.backup.*
 │   ├── settings.go      #   settings.json
-│   ├── credentials.go   #   .credentials.json (existence detection only)
+│   ├── credentials.go   #   .credentials.json (存在検出のみ)
 │   ├── filehistory.go   #   file-history/
-│   └── misc.go          #   shell-snapshots, paste-cache, etc.
-├── analyzer/            # Forensic analysis
-│   ├── analyzer.go      #   RawData → ForensicReport conversion
-│   ├── timeline.go      #   Chronological event construction
-│   ├── toolusage.go     #   Tool usage statistics
-│   ├── tokenusage.go    #   Token consumption analysis
-│   ├── filetracking.go  #   File change tracking
-│   └── permissions.go   #   Permission analysis
-└── renderer/            # Report output
-    ├── renderer.go      #   Format dispatch
-    ├── json.go          #   JSON output
-    ├── csv.go           #   CSV output (with UTF-8 BOM)
-    ├── markdown.go      #   Markdown output
-    ├── html.go          #   HTML output (self-contained)
-    └── locale.go        #   English/Japanese bilingual dictionary
+│   └── misc.go          #   shell-snapshots, paste-cache 等
+├── analyzer/            # フォレンジック分析
+│   ├── analyzer.go      #   RawData → ForensicReport 変換
+│   ├── timeline.go      #   時系列イベント構築
+│   ├── toolusage.go     #   ツール使用統計
+│   ├── tokenusage.go    #   トークン消費分析
+│   ├── filetracking.go  #   ファイル変更追跡
+│   └── permissions.go   #   パーミッション分析
+└── renderer/            # レポート出力
+    ├── renderer.go      #   フォーマット振り分け
+    ├── json.go          #   JSON 出力
+    ├── csv.go           #   CSV 出力 (UTF-8 BOM 付き)
+    ├── markdown.go      #   Markdown 出力
+    ├── html.go          #   HTML 出力 (自己完結型)
+    └── locale.go        #   日英バイリンガル辞書
 ```
 
-## Forensic Use Cases
+## フォレンジック活用例
 
-### Incident Response
+### インシデント対応
 ```bash
-# Investigate Claude Code usage on a departed employee's PC (displayed in local time)
+# 退職者の PC から Claude Code の使用状況を調査 (現地時間で表示)
 ./ccfx --path /mnt/evidence/Users/suspect/.claude \
        --format json,html \
        --timezone Asia/Tokyo \
@@ -352,28 +354,28 @@ ccfx/
        --redact-pii
 ```
 
-### Internal Audit
+### 内部監査
 ```bash
-# Get this month's usage as CSV to import into a spreadsheet
+# 今月の使用状況を CSV で取得し、スプレッドシートに取り込む
 ./ccfx --format csv \
        --timezone Asia/Tokyo \
        --date-from 2026-05-01 --date-to 2026-05-31 \
        --language ja
 ```
 
-### Security Review
+### セキュリティレビュー
 ```bash
-# Check permission settings and credential status
+# パーミッション設定と認証情報の状態を確認
 ./ccfx --format html --language ja
-# → Review the "Permission & Security" and "Credential Discovery" sections in report.html
+# → report.html の "パーミッション・セキュリティ設定" と "認証情報検出" を確認
 ```
 
-## Disclaimer
+## 免責事項
 
-- This tool is experimental. It does not guarantee the accuracy or completeness of its output.
-- The developer assumes no liability for any damage arising from its use.
-- This tool is intended for authorized use only. Misuse for unauthorized data collection or analysis is prohibited.
+- 本ツールは検証段階 (experimental) です。出力結果の正確性・完全性を保証しません。
+- 使用により生じた損害について、開発者は一切の責任を負いません。
+- 本ツールは正当な権限に基づく使用を前提としています。無断でのデータ収集・解析への悪用を禁じます。
 
-## License
+## ライセンス
 
 MIT
