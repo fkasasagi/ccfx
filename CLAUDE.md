@@ -140,8 +140,8 @@ break tests until the expected numbers are updated — that is intentional.
 - Version lives in one place: `const version` in `main.go`. Bump it in its own
   `chore: bump version to X.Y.Z` commit, after the feature commits.
 - Commit messages: `feat:` / `fix:` / `docs:` / `chore:`, imperative, English.
-- `README.md` (English, canonical) and `README.ja.md` are mirrors — user-visible changes (flags,
-  output files, report sections) must be applied to both, and to the relevant `ccfx help <topic>`
-  text in `main.go`.
+- `README.md` (Japanese, the default GitHub landing) and `README.en.md` (English) are mirrors —
+  user-visible changes (flags, output files, report sections) must be applied to both, and to the
+  relevant `ccfx help <topic>` text in `main.go`.
 - `docs/` holds Japanese design notes and is **gitignored** (local-only); binaries, `ccfx-*`,
   `checksums.txt`, and `ccfx-output/` are gitignored too.

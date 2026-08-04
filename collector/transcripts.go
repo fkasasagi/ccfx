@@ -189,6 +189,9 @@ func parseTranscript(path, sessionID, encodedProject string) (*model.TranscriptS
 			if raw.GitBranch != "" && ts.GitBranch == "" {
 				ts.GitBranch = raw.GitBranch
 			}
+			if raw.CWD != "" && ts.CWD == "" {
+				ts.CWD = raw.CWD
+			}
 			if raw.PermissionMode != "" {
 				ts.PermissionMode = raw.PermissionMode
 			}
