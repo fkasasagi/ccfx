@@ -116,9 +116,13 @@ happened next. Rules are symptoms, never verdicts; see `ccfx help injection`.
   credential path is `low` (ccfx's own source trips it) while an instruction to fetch one is `high`,
   and one ingress yields at most one finding. Measure against a real `~/.claude` before loosening
   any of them.
-- **Project path decoding is lossy**: directory names encode `/` as `-`. `buildProjectMap` prefers
-  the authoritative real paths from the backup file and only falls back to naive `-` → `/`
-  substitution, which mangles paths that legitimately contain `-`.
+- **Project paths: encode is exact, decode is lossy.** Claude names `projects/` directories by
+  replacing every non-alphanumeric rune with `-` (`encodeProjectPath` mirrors this — `:` `\` `/`
+  and non-ASCII all collapse, so it matches on Windows too). `buildProjectMap` resolves a
+  transcript's path in priority order: the exact per-line `cwd`, then the authoritative real path
+  from the backup file (matched via `encodeProjectPath`), then a last-resort `decodeProjectPath`.
+  Only that last step is lossy (a `-` may have been any separator or a literal `-`); it recognizes
+  Unix-absolute and Windows drive-letter forms.
 - **Zero times in JSON**: `writeJSON` byte-replaces `"0001-01-01T00:00:00Z"` with `null` after
   marshaling. A test asserts no zero-time string survives.
 - **CSV files start with a UTF-8 BOM** (`newCSVFile`) for Windows Excel; tests assert it, and any

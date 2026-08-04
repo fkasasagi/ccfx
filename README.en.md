@@ -7,7 +7,7 @@ A digital forensics tool that analyzes the local artifacts Claude Code leaves be
 
 A single Go binary with zero external dependencies. **Runs on Linux / macOS / Windows.**
 
-> **On Windows:** drive-letter paths (`C:\Users\...`) and `--timezone` IANA names (`Asia/Tokyo`, etc.) are supported (the timezone database is embedded in the binary). Only `-ac` archive acquisition needs Administrator or Developer Mode, to preserve symlinks.
+> **On Windows:** project paths (`C:\Users\...` and UNC paths) are reconstructed from the working directory Claude records, and `--timezone` IANA names (`Asia/Tokyo`, etc.) work (the timezone database is embedded in the binary). Only `-ac` archive acquisition needs Administrator or Developer Mode, to preserve symlinks.
 
 > **⚠ Note:** This tool is experimental. It does not guarantee the accuracy of its output. Use it at your own risk.
 >
