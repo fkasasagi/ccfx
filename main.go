@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -44,6 +45,7 @@ func main() {
 	dateTo := fs.String("date-to", "", "Filter by date range end (YYYY-MM-DD)")
 	timezone := fs.String("timezone", "", "Timezone for timestamps: e.g. Asia/Tokyo, America/New_York (default: UTC)")
 	redactPII := fs.Bool("redact-pii", false, "Redact email addresses and UUIDs")
+	acquireAll := fs.Bool("ac", false, "Also write "+acquisitionName+", a verbatim copy of the source directory (WARNING: includes credentials)")
 	force := fs.Bool("force", false, "Overwrite existing output (otherwise ccfx refuses if any exists)")
 	verbose := fs.Bool("verbose", false, "Enable debug logging")
 	showVersion := fs.Bool("version", false, "Print version and exit")
@@ -84,7 +86,7 @@ func main() {
 	}
 
 	if !*force {
-		if existing := existingOutputs(*outDir); len(existing) > 0 {
+		if existing := existingOutputs(*outDir, *acquireAll); len(existing) > 0 {
 			fmt.Fprintf(os.Stderr, "Output already exists in %s:\n", *outDir)
 			for _, e := range existing {
 				fmt.Fprintf(os.Stderr, "  %s\n", e)
@@ -130,6 +132,29 @@ func main() {
 		}
 	}
 
+	// Acquire before analyzing: if anything downstream fails, the evidence copy
+	// has already been taken.
+	var acq *acquisitionResult
+	if *acquireAll {
+		// Warn before writing, not after: by the time the archive exists, the
+		// token is already on disk.
+		fmt.Fprintf(os.Stderr,
+			"WARNING: -ac writes %s, a verbatim copy of %s.\n"+
+				"It includes .credentials.json — your OAuth token, in cleartext — if present,\n"+
+				"and --redact-pii does not apply to it. The archive is created 0600; keep it\n"+
+				"that way, encrypt it before sending it anywhere, and delete it when done.\n\n",
+			acquisitionName, claudeDir)
+
+		a, err := acquire(claudeDir, *outDir)
+		if err != nil {
+			log.Fatalf("acquisition failed: %v", err)
+		}
+		acq = a
+		for _, s := range a.Skipped {
+			fmt.Fprintf(os.Stderr, "acquisition skipped %s\n", s)
+		}
+	}
+
 	raw, err := collector.Collect(claudeDir, *verbose)
 	if err != nil {
 		log.Fatalf("collection failed: %v", err)
@@ -168,7 +193,13 @@ func main() {
 	for _, f := range result.Files {
 		fmt.Printf("  %s (%s)\n", f.Path, formatBytes(f.Size))
 	}
-	fmt.Printf("\n%d file(s) written to %s\n", len(result.Files), *outDir)
+	written := len(result.Files)
+	if acq != nil {
+		fmt.Printf("  %s (%s) — %d files, %d dirs, %d symlinks\n",
+			acq.Path, formatBytes(acq.Size), acq.Files, acq.Dirs, acq.Symlinks)
+		written++
+	}
+	fmt.Printf("\n%d file(s) written to %s\n", written, *outDir)
 }
 
 func showHelp() {
@@ -195,6 +226,13 @@ FLAGS
   --timezone ZONE          Timezone for timestamps (default: UTC)
                            Use IANA names: e.g. Asia/Tokyo, US/Eastern
   --redact-pii             Mask email addresses and UUIDs in output
+  -ac                      Acquire: also write ` + acquisitionName + `, a verbatim
+                           zip of the source directory with file timestamps,
+                           empty directories and symlinks preserved.
+                           WARNING: verbatim includes .credentials.json, i.e.
+                           your OAuth token in cleartext. --redact-pii does NOT
+                           apply to the archive. Anyone who receives it can act
+                           as you. Treat it as a secret, not as a report.
   --force                  Overwrite existing output (otherwise ccfx refuses)
   --verbose                Print debug information to stderr
   --version                Print version and exit
@@ -397,6 +435,13 @@ func showSecurityHelp() {
     ccfx checks ONLY for the file's existence, size, and modification
     date. Token values are never read, parsed, or included in output.
 
+    THE ONE EXCEPTION IS -ac. The acquisition archive is a byte-for-byte
+    copy of the source directory, so it contains .credentials.json with
+    the token in cleartext. PII redaction does not apply to it. Whoever
+    holds the archive can authenticate as the user it came from, so
+    encrypt it in transit and at rest, and prefer omitting -ac when the
+    report alone answers the question.
+
   PII REDACTION (--redact-pii)
     When enabled, email addresses and UUIDs in the output are masked:
       user@example.com  →  us***@example.com
@@ -544,9 +589,14 @@ func showExamplesHelp() {
 `)
 }
 
-func existingOutputs(outDir string) []string {
+func existingOutputs(outDir string, withAcquisition bool) []string {
+	known := renderer.KnownOutputFiles(outDir)
+	if withAcquisition {
+		known = append(known, filepath.Join(outDir, acquisitionName))
+	}
+
 	var existing []string
-	for _, p := range renderer.KnownOutputFiles(outDir) {
+	for _, p := range known {
 		if info, err := os.Stat(p); err == nil {
 			existing = append(existing, fmt.Sprintf("%s  (modified %s)", p, info.ModTime().Format("2006-01-02 15:04:05")))
 		}

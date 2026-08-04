@@ -74,6 +74,7 @@ ccfx version
 | `--date-to YYYY-MM-DD` | - | この日付以前に限定 |
 | `--timezone ZONE` | `UTC` | IANA タイムゾーン名 (例: `Asia/Tokyo`, `America/New_York`) |
 | `--redact-pii` | off | email・UUID をマスク |
+| `-ac` | off | `claude-acquisition.zip` も出力する。対象ディレクトリを丸ごと zip 化し、ファイルのタイムスタンプ・空ディレクトリ・シンボリックリンクを維持する。**`.credentials.json` を平文のまま含む — [セキュリティに関する注意](#セキュリティに関する注意)を参照** |
 | `--force` | off | 出力先に既存ファイルがあっても上書きする (未指定時は中止) |
 | `--verbose` | off | デバッグログ出力 |
 | `--version` | - | バージョン表示 |
@@ -139,6 +140,12 @@ ccfx-output/
 ```
 
 CSV には UTF-8 BOM が付いているため、Windows Excel で文字化けせずに開けます。
+
+`-ac` を付けると、上記に加えてもう1ファイル出力されます。
+
+```
+└── claude-acquisition.zip   # 対象ディレクトリの完全な複製 (タイムスタンプ維持)
+```
 
 ## 出力例
 
@@ -289,6 +296,7 @@ Timestamp (UTC),Session ID,Project,Shell?,Command
 ## セキュリティに関する注意
 
 - **認証トークンの値は一切読み取りません。** `.credentials.json` についてはファイルの存在、サイズ、更新日時のみを記録します。
+- **`-ac` だけは例外です。** 取得アーカイブは対象ディレクトリのバイト単位の複製なので、`.credentials.json` を平文のまま含み、`--redact-pii` も適用されません。アーカイブを手にした者は取得元ユーザーとして認証できてしまいます。受け渡し時・保管時とも暗号化し、レポートだけで用が足りるなら `-ac` は付けないでください。
 - `--redact-pii` を使うと、出力レポート中の email アドレスと UUID がマスクされます (`us***@example.com`, `a1b2c3d4-****-****-****-************`)。
 - 入力ディレクトリ (`~/.claude/`) の内容は一切変更しません (read-only 解析)。
 

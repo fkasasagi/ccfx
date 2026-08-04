@@ -74,6 +74,7 @@ ccfx version
 | `--date-to YYYY-MM-DD` | - | Limit to entries on or before this date |
 | `--timezone ZONE` | `UTC` | IANA timezone name (e.g. `Asia/Tokyo`, `America/New_York`) |
 | `--redact-pii` | off | Mask emails and UUIDs |
+| `-ac` | off | Also write `claude-acquisition.zip`, a verbatim zip of the source directory with file timestamps, empty directories, and symlinks preserved. **Contains `.credentials.json` in cleartext — see [Security Notes](#security-notes)** |
 | `--force` | off | Overwrite existing files in the output directory (aborts if not specified) |
 | `--verbose` | off | Emit debug logs |
 | `--version` | - | Show version |
@@ -139,6 +140,12 @@ ccfx-output/
 ```
 
 CSV files include a UTF-8 BOM, so they open without garbled characters in Windows Excel.
+
+With `-ac`, one more file is written alongside them:
+
+```
+└── claude-acquisition.zip   # Verbatim copy of the source directory (timestamps preserved)
+```
 
 ## Output Examples
 
@@ -289,6 +296,7 @@ The generated report includes the following sections:
 ## Security Notes
 
 - **Credential token values are never read.** For `.credentials.json`, only the file's existence, size, and modification time are recorded.
+- **`-ac` is the one exception.** The acquisition archive is a byte-for-byte copy of the source directory, so it contains `.credentials.json` with the OAuth token in cleartext, and `--redact-pii` does not apply to it. Whoever holds the archive can authenticate as the user it came from. Encrypt it in transit and at rest, and omit `-ac` when the report alone answers the question.
 - With `--redact-pii`, email addresses and UUIDs in the output report are masked (`us***@example.com`, `a1b2c3d4-****-****-****-************`).
 - The contents of the input directory (`~/.claude/`) are never modified (read-only analysis).
 

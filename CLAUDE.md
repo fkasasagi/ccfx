@@ -68,6 +68,8 @@ Every type lives in `model/model.go`; the three packages never import each other
 - **New non-CSV output file** (a second JSON file, an HTML asset, …): only the CSV names are
   derived — `report.json` / `report.md` / `report.html` are still hardcoded at the top of
   `KnownOutputFiles()`, so add yours there by hand or the `--force` guard will not cover it.
+  A file produced outside `renderer/` (as `-ac` does) is instead registered in `existingOutputs()`
+  in `main.go`, which is what actually feeds the guard.
 - **New label**: add the key to **both** `dictEN` and `dictJA`. A missing key renders as an empty
   string, silently. If the label is a timestamp column, add its key to the `timeKeys` list in
   `appendTZ()` so it gets the ` (JST)`-style suffix.
