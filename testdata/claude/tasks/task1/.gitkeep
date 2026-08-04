@@ -1,0 +1,2 @@
+# Keeps this directory in git. scanMisc counts directories under tasks/, so
+# without it TestCollect fails on a fresh clone with TaskSessions = 0, want 1.
