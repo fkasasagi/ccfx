@@ -73,7 +73,7 @@ func TestRenderCSV(t *testing.T) {
 		t.Fatalf("Render failed: %v", err)
 	}
 
-	expectedFiles := []string{"sessions.csv", "timeline.csv", "tool_usage.csv", "file_changes.csv", "token_usage.csv", "history.csv"}
+	expectedFiles := []string{"sessions.csv", "timeline.csv", "tool_usage.csv", "file_changes.csv", "token_usage.csv", "history.csv", "conversations.csv"}
 	if len(result.Files) != len(expectedFiles) {
 		t.Fatalf("files = %d, want %d", len(result.Files), len(expectedFiles))
 	}

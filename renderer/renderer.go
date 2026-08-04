@@ -91,6 +91,7 @@ func KnownOutputFiles(outDir string) []string {
 		"file_changes.csv",
 		"token_usage.csv",
 		"history.csv",
+		"conversations.csv",
 	}
 	paths := make([]string, len(names))
 	for i, n := range names {
