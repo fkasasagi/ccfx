@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -298,6 +299,15 @@ func buildSessions(raw *model.RawData, projectMap map[string]string, opts *Optio
 		}
 		sessions = append(sessions, *s)
 	}
+
+	// sessionIndex is a map, so iteration order is random. Sort to a total order
+	// (SessionID breaks ties) — a forensic report must be byte-reproducible.
+	sort.Slice(sessions, func(i, j int) bool {
+		if !sessions[i].StartedAt.Equal(sessions[j].StartedAt) {
+			return sessions[i].StartedAt.Before(sessions[j].StartedAt)
+		}
+		return sessions[i].SessionID < sessions[j].SessionID
+	})
 
 	return sessions
 }

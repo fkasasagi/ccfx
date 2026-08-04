@@ -33,8 +33,13 @@ func buildToolUsage(raw *model.RawData, opts *Options) model.ToolUsageReport {
 			SessionCount: len(byToolSession[name]),
 		})
 	}
+	// rankings comes from a map, and equal call counts are common — break ties by
+	// name so the ranking is reproducible run to run.
 	sort.Slice(rankings, func(i, j int) bool {
-		return rankings[i].TotalCalls > rankings[j].TotalCalls
+		if rankings[i].TotalCalls != rankings[j].TotalCalls {
+			return rankings[i].TotalCalls > rankings[j].TotalCalls
+		}
+		return rankings[i].ToolName < rankings[j].ToolName
 	})
 
 	return model.ToolUsageReport{

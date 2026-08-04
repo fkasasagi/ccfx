@@ -59,7 +59,9 @@ func buildTimeline(raw *model.RawData, projectMap map[string]string, opts *Optio
 		}
 	}
 
-	sort.Slice(entries, func(i, j int) bool {
+	// Stable: entries are appended in transcript order, and events sharing a
+	// timestamp (a message and its tool calls) must keep that order.
+	sort.SliceStable(entries, func(i, j int) bool {
 		return entries[i].Timestamp.Before(entries[j].Timestamp)
 	})
 

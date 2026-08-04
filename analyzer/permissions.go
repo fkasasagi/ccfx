@@ -92,8 +92,12 @@ func buildProjectSummaries(raw *model.RawData, projectMap map[string]string, ses
 		summaries = append(summaries, ps)
 	}
 
+	// accum is a map; break ties by path so equal session counts keep a stable order.
 	sort.Slice(summaries, func(i, j int) bool {
-		return summaries[i].SessionCount > summaries[j].SessionCount
+		if summaries[i].SessionCount != summaries[j].SessionCount {
+			return summaries[i].SessionCount > summaries[j].SessionCount
+		}
+		return summaries[i].Path < summaries[j].Path
 	})
 
 	return summaries

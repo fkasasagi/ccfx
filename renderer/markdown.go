@@ -114,7 +114,8 @@ func writeMarkdown(report *model.ForensicReport, outDir string, dict Dict, tz *t
 		b.WriteString(fmt.Sprintf("### %s\n\n", dict["by_model"]))
 		b.WriteString(fmt.Sprintf("| %s | %s | %s |\n", dict["model"], dict["input_tokens"], dict["output_tokens"]))
 		b.WriteString("|---|---|---|\n")
-		for m, t := range tu.ByModel {
+		for _, m := range sortedKeys(tu.ByModel) {
+			t := tu.ByModel[m]
 			b.WriteString(fmt.Sprintf("| %s | %s | %s |\n", m, formatInt64(t.InputTokens), formatInt64(t.OutputTokens)))
 		}
 		b.WriteString("\n")
