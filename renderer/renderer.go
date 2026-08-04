@@ -85,13 +85,9 @@ func KnownOutputFiles(outDir string) []string {
 		"report.json",
 		"report.md",
 		"report.html",
-		"sessions.csv",
-		"timeline.csv",
-		"tool_usage.csv",
-		"file_changes.csv",
-		"token_usage.csv",
-		"history.csv",
-		"conversations.csv",
+	}
+	for _, o := range csvOutputs {
+		names = append(names, o.name)
 	}
 	paths := make([]string, len(names))
 	for i, n := range names {

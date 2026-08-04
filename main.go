@@ -302,6 +302,7 @@ func showFormatsHelp() {
            file_changes.csv         Files modified via Edit/Write tools
            token_usage.csv          Daily token consumption breakdown
            history.csv              User command inputs from history.jsonl
+           conversations.csv        Full conversation text, one row per message
                                     All CSV files include UTF-8 BOM for
                                     Windows Excel compatibility.
 

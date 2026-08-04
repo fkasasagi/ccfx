@@ -15,23 +15,26 @@ import (
 
 var bom = []byte{0xEF, 0xBB, 0xBF}
 
+// csvOutputs is the single source of truth for the CSV files ccfx emits.
+// KnownOutputFiles derives from it, so a new writer is automatically covered
+// by the --force overwrite guard.
+var csvOutputs = []struct {
+	name string
+	fn   func(*model.ForensicReport, string, Dict, *time.Location) error
+}{
+	{"sessions.csv", writeSessionsCSV},
+	{"timeline.csv", writeTimelineCSV},
+	{"tool_usage.csv", writeToolUsageCSV},
+	{"file_changes.csv", writeFileChangesCSV},
+	{"token_usage.csv", writeTokenUsageCSV},
+	{"history.csv", writeHistoryCSV},
+	{"conversations.csv", writeConversationsCSV},
+}
+
 func writeCSV(report *model.ForensicReport, outDir string, dict Dict, tz *time.Location) ([]OutputFile, error) {
 	var files []OutputFile
 
-	writers := []struct {
-		name string
-		fn   func(*model.ForensicReport, string, Dict, *time.Location) error
-	}{
-		{"sessions.csv", writeSessionsCSV},
-		{"timeline.csv", writeTimelineCSV},
-		{"tool_usage.csv", writeToolUsageCSV},
-		{"file_changes.csv", writeFileChangesCSV},
-		{"token_usage.csv", writeTokenUsageCSV},
-		{"history.csv", writeHistoryCSV},
-		{"conversations.csv", writeConversationsCSV},
-	}
-
-	for _, w := range writers {
+	for _, w := range csvOutputs {
 		path := filepath.Join(outDir, w.name)
 		if err := w.fn(report, path, dict, tz); err != nil {
 			return nil, fmt.Errorf("%s: %w", w.name, err)

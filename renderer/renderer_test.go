@@ -73,6 +73,9 @@ func TestRenderCSV(t *testing.T) {
 		t.Fatalf("Render failed: %v", err)
 	}
 
+	// Deliberately a hand-written literal, not derived from csvOutputs: it is an
+	// independent oracle for the writer table. Deriving it would make the
+	// comparison below tautological.
 	expectedFiles := []string{"sessions.csv", "timeline.csv", "tool_usage.csv", "file_changes.csv", "token_usage.csv", "history.csv", "conversations.csv"}
 	if len(result.Files) != len(expectedFiles) {
 		t.Fatalf("files = %d, want %d", len(result.Files), len(expectedFiles))
@@ -170,6 +173,26 @@ func TestRenderHTML(t *testing.T) {
 	}
 	if !strings.Contains(content, "Command History") {
 		t.Error("missing Command History section")
+	}
+}
+
+// A file missing from KnownOutputFiles is silently overwritten without --force,
+// which is how conversations.csv slipped through in 0.5.0.
+func TestKnownOutputFilesCoversEveryOutput(t *testing.T) {
+	known := make(map[string]bool)
+	for _, p := range KnownOutputFiles("out") {
+		known[filepath.Base(p)] = true
+	}
+
+	for _, o := range csvOutputs {
+		if !known[o.name] {
+			t.Errorf("%s is written but not in KnownOutputFiles: the --force guard would not protect it", o.name)
+		}
+	}
+	for _, name := range []string{"report.json", "report.md", "report.html"} {
+		if !known[name] {
+			t.Errorf("%s missing from KnownOutputFiles", name)
+		}
 	}
 }
 
