@@ -59,16 +59,28 @@ Every type lives in `model/model.go`; the three packages never import each other
 - **New output format**: `renderer/<fmt>.go` with `write<Fmt>(report, outDir, dict, tz)` → branch in
   `Render()` → add the key to `parseFormats()`'s `valid` map **and** to the `"all"` list in
   `main.go` → update `showFormatsHelp()`.
-- **New output file**: add it to the writers list in `csv.go` (or equivalent), to
-  `renderer.KnownOutputFiles()` (this drives the `--force` overwrite guard), and to
-  `expectedFiles` in `renderer/renderer_test.go`. All three must agree — a file missing from
-  `KnownOutputFiles` is silently overwritten without `--force`.
+- **New CSV output file**: add it to `csvOutputs` in `renderer/csv.go` — that table is the single
+  source of truth and `KnownOutputFiles()` (which drives the `--force` overwrite guard) derives from
+  it. Then update the two hand-written places that deliberately do *not* derive from it:
+  `expectedFiles` in `renderer/renderer_test.go` (an independent oracle — do not derive it, that
+  makes the assertion tautological) and the file table in `showFormatsHelp()` in `main.go`.
+  User-visible output files are also listed in `README.md` and `README.ja.md`.
+- **New non-CSV output file** (a second JSON file, an HTML asset, …): only the CSV names are
+  derived — `report.json` / `report.md` / `report.html` are still hardcoded at the top of
+  `KnownOutputFiles()`, so add yours there by hand or the `--force` guard will not cover it.
 - **New label**: add the key to **both** `dictEN` and `dictJA`. A missing key renders as an empty
   string, silently. If the label is a timestamp column, add its key to the `timeKeys` list in
   `appendTZ()` so it gets the ` (JST)`-style suffix.
 
 ## Non-obvious behaviors and gotchas
 
+- **Report output must be byte-reproducible.** Two runs over the same `~/.claude/` must produce
+  identical files (modulo `generated_at`) — a forensic report gets diffed and re-derived. Anything
+  assembled from a Go map (`sessionIndex`, tool rankings, project accumulators) is therefore sorted
+  to a *total* order in `analyzer/`, with an explicit tiebreak; sorts over an already-deterministic
+  slice use `sort.SliceStable`. Adding a `for k := range someMap` that reaches the output without a
+  sort silently reintroduces the bug. (`text/template` sorts map keys itself, so HTML is safe;
+  Markdown is not — use `sortedKeys`.)
 - **Scanner buffer**: transcript JSONL lines can be hundreds of KB (a `tool_result` may embed a
   whole file), so `parseTranscript` sets a 4 MB `scanner.Buffer`. The 64 KB default panics with
   `token too long`.
