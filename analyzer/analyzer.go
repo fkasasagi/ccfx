@@ -71,7 +71,16 @@ func buildProjectMap(raw *model.RawData) map[string]string {
 	}
 
 	for _, ts := range raw.Transcripts {
-		if _, ok := pm[ts.EncodedProject]; !ok {
+		if _, ok := pm[ts.EncodedProject]; ok {
+			continue
+		}
+		// Prefer the exact cwd Claude records per transcript line: it is the
+		// real, non-lossy project path (correct on every OS, including Windows
+		// drive-letter and UNC paths). Decode the lossy encoded directory name
+		// only as a fallback when no line carried a cwd.
+		if ts.CWD != "" {
+			pm[ts.EncodedProject] = ts.CWD
+		} else {
 			pm[ts.EncodedProject] = decodeProjectPath(ts.EncodedProject)
 		}
 	}
@@ -83,14 +92,34 @@ func encodeProjectPath(path string) string {
 	return strings.ReplaceAll(path, "/", "-")
 }
 
+// decodeProjectPath reconstructs a filesystem path from a Claude project
+// directory name (an absolute cwd with every '/', '\' and ':' collapsed to
+// '-'). The collapse is not invertible — a '-' in the result may have been any
+// of those, or a literal '-' in a path segment — so this is a best-effort
+// LAST RESORT. Callers should prefer the exact per-line cwd (TranscriptSession.CWD)
+// and only fall back here when it is absent. Input is assumed to be a collapsed
+// ABSOLUTE path: Unix absolute (leading '-') and Windows drive-letter ("X--")
+// forms are recognized; anything else uses the generic '-' -> '/' mapping.
 func decodeProjectPath(encoded string) string {
 	if encoded == "" {
 		return ""
+	}
+	// Windows drive-letter form: Claude encodes "C:\Users\x" as "C--Users-x"
+	// because both ':' and '\' collapse to '-'. Reconstruct the drive letter and
+	// backslash separators instead of the Unix-only "C//Users/x" mangling.
+	// A Unix absolute path always starts with '-' (from its leading '/'), so the
+	// "letter + '--'" prefix cannot collide with one.
+	if len(encoded) >= 3 && isASCIILetter(encoded[0]) && encoded[1] == '-' && encoded[2] == '-' {
+		return string(encoded[0]) + `:\` + strings.ReplaceAll(encoded[3:], "-", `\`)
 	}
 	if encoded[0] == '-' {
 		return "/" + strings.ReplaceAll(encoded[1:], "-", "/")
 	}
 	return strings.ReplaceAll(encoded, "-", "/")
+}
+
+func isASCIILetter(b byte) bool {
+	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z')
 }
 
 func computeDateRange(sessions []model.Session, timeline []model.TimelineEntry) model.DateRange {

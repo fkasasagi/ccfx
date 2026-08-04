@@ -9,6 +9,11 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	// time/tzdata embeds the IANA Time Zone Database into the binary so that
+	// --timezone works on Windows, which (unlike Linux/macOS) ships no system
+	// zoneinfo. Without it, time.LoadLocation("Asia/Tokyo") and every other
+	// named zone fail with "unknown time zone" on the Windows build.
+	_ "time/tzdata"
 
 	"github.com/fkasasagi/ccfx/analyzer"
 	"github.com/fkasasagi/ccfx/collector"

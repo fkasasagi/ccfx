@@ -267,6 +267,10 @@ type SessionFile struct {
 type TranscriptSession struct {
 	SessionID      string
 	EncodedProject string
+	// CWD is the exact working directory Claude records on transcript lines.
+	// Unlike EncodedProject (a lossy '-'-collapsed directory name) it is the
+	// real, unambiguous project path; empty when no line carried a cwd.
+	CWD            string
 	FilePath       string
 	Messages       []TranscriptMessage
 	Title          string
