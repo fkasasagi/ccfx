@@ -165,7 +165,7 @@ CSV には UTF-8 BOM が付いているため、Windows Excel で文字化けせ
   "meta": {
     "generated_at": "2026-05-25T13:38:19Z",
     "source_path": "/home/user/.claude",
-    "tool_version": "0.1.0",
+    "tool_version": "0.7.2",
     "platform": "linux/amd64",
     "total_sessions": 310,
     "total_projects": 6,
