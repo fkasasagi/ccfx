@@ -99,6 +99,9 @@ happened next. Rules are symptoms, never verdicts; see `ccfx help injection`.
 - **Three timestamp encodings**: `history.jsonl` and `sessions/*.json` use Unix **milliseconds**
   (`safeUnixMilli` maps `<= 0` to the zero time), transcripts use RFC3339. Everything is normalized
   to `time.Time` in the collector, and only converted to a `--timezone` at render time.
+- **`main.go` blank-imports `_ "time/tzdata"` on purpose** — do not drop it as an "unused import".
+  Windows ships no system zoneinfo, so without the embedded database `time.LoadLocation` fails on
+  every IANA name (`Asia/Tokyo`, …) and `--timezone` crashes on the Windows build. It costs ~450 KB.
 - **Never slice a string at a byte offset to truncate it.** Use `clip()` in `renderer/markdown.go`
   (exposed to templates as `truncate`). A cut mid-rune emits invalid UTF-8, and one bad byte makes
   the entire `report.html` unparseable — which is silent until someone tries to read the file.
