@@ -63,24 +63,46 @@ func Analyze(raw *model.RawData, opts *Options) *model.ForensicReport {
 func buildProjectMap(raw *model.RawData) map[string]string {
 	pm := make(map[string]string)
 
-	if raw.BackupData != nil {
-		for projPath := range raw.BackupData.Projects {
-			encoded := encodeProjectPath(projPath)
-			pm[encoded] = projPath
+	// Priority order, highest first. The exact per-line cwd wins because it is
+	// the native, non-lossy working directory Claude recorded (backslashes on
+	// Windows), so it stays consistent with the raw paths in history.jsonl —
+	// the backup file stores the same project in a mix of '/' and '\' forms and
+	// must not shadow it.
+
+	// 1. The exact per-line cwd. First transcript to name a project wins, so a
+	//    project with several sessions resolves the same way every run
+	//    (raw.Transcripts is directory-ordered, hence stable).
+	for _, ts := range raw.Transcripts {
+		if ts.CWD == "" {
+			continue
+		}
+		if _, ok := pm[ts.EncodedProject]; !ok {
+			pm[ts.EncodedProject] = ts.CWD
 		}
 	}
 
-	for _, ts := range raw.Transcripts {
-		if _, ok := pm[ts.EncodedProject]; ok {
-			continue
+	// 2. The backup file's authoritative path, for projects no cwd covered.
+	//    Iterate in sorted order: encodeProjectPath is not injective, so two
+	//    backup paths can collide on one encoded key; a map's random iteration
+	//    would pick the winner non-deterministically, and a forensic report
+	//    must be byte-reproducible.
+	if raw.BackupData != nil {
+		projPaths := make([]string, 0, len(raw.BackupData.Projects))
+		for projPath := range raw.BackupData.Projects {
+			projPaths = append(projPaths, projPath)
 		}
-		// Prefer the exact cwd Claude records per transcript line: it is the
-		// real, non-lossy project path (correct on every OS, including Windows
-		// drive-letter and UNC paths). Decode the lossy encoded directory name
-		// only as a fallback when no line carried a cwd.
-		if ts.CWD != "" {
-			pm[ts.EncodedProject] = ts.CWD
-		} else {
+		sort.Strings(projPaths)
+		for _, projPath := range projPaths {
+			encoded := encodeProjectPath(projPath)
+			if _, ok := pm[encoded]; !ok {
+				pm[encoded] = projPath
+			}
+		}
+	}
+
+	// 3. Last resort: lossy decode of the encoded directory name.
+	for _, ts := range raw.Transcripts {
+		if _, ok := pm[ts.EncodedProject]; !ok {
 			pm[ts.EncodedProject] = decodeProjectPath(ts.EncodedProject)
 		}
 	}
@@ -88,8 +110,24 @@ func buildProjectMap(raw *model.RawData) map[string]string {
 	return pm
 }
 
+// encodeProjectPath turns a filesystem path into the directory name Claude uses
+// under ~/.claude/projects/. Claude replaces every non-alphanumeric character
+// with '-' (so "/home/u/p" -> "-home-u-p" and, on Windows, "C:\Users\u\p" ->
+// "C--Users-u-p"), one '-' per rune. Mirroring that exactly is what lets a
+// backup's real project path match a transcript's encoded directory name on
+// every platform — replacing only '/' left every Windows path (and any path
+// with '.', spaces, or non-ASCII) unmatched.
 func encodeProjectPath(path string) string {
-	return strings.ReplaceAll(path, "/", "-")
+	return strings.Map(func(r rune) rune {
+		if isASCIIAlnum(r) {
+			return r
+		}
+		return '-'
+	}, path)
+}
+
+func isASCIIAlnum(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
 }
 
 // decodeProjectPath reconstructs a filesystem path from a Claude project
