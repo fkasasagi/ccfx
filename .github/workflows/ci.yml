@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, TZ=${{ matrix.tz }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        tz: [UTC, Asia/Tokyo]
+    env:
+      # ccfx reports timestamps, and Go's time.UnixMilli and os.Stat both return
+      # values in the local zone. Bugs of that shape are invisible when every
+      # machine runs UTC, so the suite runs a second time under a non-UTC zone.
+      #
+      # Go reads TZ only on Unix (time/zoneinfo_unix.go); on Windows initLocal
+      # calls GetTimeZoneInformation and ignores the variable, so the Windows
+      # runner is switched with tzutil below instead.
+      TZ: ${{ matrix.tz }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Switch the system timezone (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $id = if ('${{ matrix.tz }}' -eq 'Asia/Tokyo') { 'Tokyo Standard Time' } else { 'UTC' }
+          tzutil /s $id
+          Write-Host "system timezone is now: $(tzutil /g)"
+
+      - name: Report the effective timezone (Unix)
+        if: runner.os != 'Windows'
+        run: date
+
+      - run: go build ./...
+
+      - run: go vet ./...
+
+      - run: go test ./...
+
+  format:
+    name: gofmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+  cross-build:
+    name: build (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {goos: linux, goarch: amd64}
+          - {goos: linux, goarch: arm64}
+          - {goos: darwin, goarch: amd64}
+          - {goos: darwin, goarch: arm64}
+          - {goos: windows, goarch: amd64}
+          - {goos: windows, goarch: arm64}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Build and vet for the target platform
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -o /dev/null .
+          go vet ./...
+
+  minimum-go:
+    name: minimum Go version (go.mod)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Reads the `go` directive from go.mod, so the version the module claims to
+      # support is the one actually exercised.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go version
+      - run: go build ./...
+      - run: go test ./...
