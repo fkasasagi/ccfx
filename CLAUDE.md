@@ -96,6 +96,13 @@ happened next. Rules are symptoms, never verdicts; see `ccfx help injection`.
 - **Polymorphic `message.content`**: it is either a plain string or an array of
   `{type: text|tool_use|tool_result}` items. `parseTranscriptMessage` tries the string unmarshal
   first and falls back to the array form — keep both paths when touching it.
+- **Archive permissions are platform-split.** The `-ac` archive holds an OAuth token in cleartext,
+  so `restrictToOwner` runs before any content is written. Windows has no POSIX mode bits — its
+  `os.Chmod` only toggles the read-only attribute — so `acquire_perm_windows.go` shells out to
+  `icacls /inheritance:r /grant:r <user>:F` instead. That is an external *command*, not a Go module,
+  so the zero-dependency constraint still holds; do not "simplify" it back to a single `Chmod`.
+  Privacy is asserted per platform too (mode on Unix, the real ACL on Windows): checking mode bits
+  on Windows passes on a file the whole machine can read.
 - **Three timestamp encodings**: `history.jsonl` and `sessions/*.json` use Unix **milliseconds**
   (`safeUnixMilli` maps `<= 0` to the zero time), transcripts use RFC3339. Everything is normalized
   to `time.Time` in the collector, and only converted to a `--timezone` at render time.
@@ -152,3 +159,12 @@ break tests until the expected numbers are updated — that is intentional.
   relevant `ccfx help <topic>` text in `main.go`.
 - `docs/` holds Japanese design notes and is **gitignored** (local-only); binaries, `ccfx-*`,
   `checksums.txt`, and `ccfx-output/` are gitignored too.
+
+## Open items
+
+- **The Windows `icacls` path has only ever run in CI.** `acquire_perm_windows.go` was written and
+  verified against `windows-latest` runners (GitHub Actions, Windows Server 2025) — it has never
+  been exercised on real Windows hardware, nor on a domain-joined machine, a non-English install, or
+  an account whose name needs quoting. Before relying on `-ac` for evidence handling on Windows,
+  run it there and confirm with `icacls <archive>` that the inherited ACEs are gone and only the
+  creating account remains. The CI assertion lives in `acquire_perm_windows_test.go`.

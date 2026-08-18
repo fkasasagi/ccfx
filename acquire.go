@@ -63,7 +63,11 @@ func acquire(srcDir, outDir string) (*acquisitionResult, error) {
 		return nil, err
 	}
 	defer f.Close()
-	if err := f.Chmod(0o600); err != nil {
+	// Before the token reaches the disk, not after. On failure the (still empty)
+	// archive is removed rather than left behind unprotected.
+	if err := restrictToOwner(f, zipPath); err != nil {
+		f.Close()
+		os.Remove(zipPath)
 		return nil, err
 	}
 
