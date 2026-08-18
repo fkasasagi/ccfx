@@ -15,7 +15,9 @@ func detectCredentials(path string) *model.CredentialReport {
 	}
 
 	report.FileExists = true
-	report.FileModified = info.ModTime()
+	// os.Stat reports mtime in time.Local; normalize so the report does not
+	// depend on the examining machine's timezone.
+	report.FileModified = info.ModTime().UTC()
 	report.FileSizeBytes = info.Size()
 
 	if info.Size() > 0 {

@@ -479,12 +479,18 @@ func parseTranscriptMessage(raw rawTranscriptLine) *model.TranscriptMessage {
 	return msg
 }
 
+// parseTranscriptTime returns the instant in UTC. A transcript line may carry a
+// numeric offset rather than "Z", and time.Parse would preserve that offset as a
+// fixed zone, breaking the model's UTC invariant even on a UTC machine.
 func parseTranscriptTime(s string) time.Time {
 	ts, _ := time.Parse(time.RFC3339Nano, s)
 	if ts.IsZero() {
 		ts, _ = time.Parse("2006-01-02T15:04:05.000Z", s)
 	}
-	return ts
+	if ts.IsZero() {
+		return ts
+	}
+	return ts.UTC()
 }
 
 // preview quotes the head of a tool result into the report, so it goes through
