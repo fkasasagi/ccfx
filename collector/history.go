@@ -39,7 +39,8 @@ func parseHistory(path string) ([]model.HistoryEntry, error) {
 		}
 		var ts time.Time
 		if raw.Timestamp > 0 {
-			ts = time.UnixMilli(raw.Timestamp)
+			// .UTC() keeps the model timezone-neutral; see safeUnixMilli.
+			ts = time.UnixMilli(raw.Timestamp).UTC()
 		}
 		entries = append(entries, model.HistoryEntry{
 			Display:        raw.Display,

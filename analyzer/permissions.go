@@ -44,7 +44,19 @@ func buildProjectSummaries(raw *model.RawData, projectMap map[string]string, ses
 
 	accum := make(map[string]*projAccum)
 
+	// sessions has already had --session-filter, --project-filter and --date-*
+	// applied, so it is this report's definition of what is in scope. Summarizing
+	// every transcript on disk instead let this section report more sessions and
+	// messages than the sessions section of the same report listed.
+	included := make(map[string]bool, len(sessions))
+	for _, s := range sessions {
+		included[s.SessionID] = true
+	}
+
 	for _, ts := range raw.Transcripts {
+		if !included[ts.SessionID] {
+			continue
+		}
 		proj := projectMap[ts.EncodedProject]
 		a, ok := accum[proj]
 		if !ok {
@@ -59,12 +71,6 @@ func buildProjectSummaries(raw *model.RawData, projectMap map[string]string, ses
 		a.messages += len(ts.Messages)
 		for _, msg := range ts.Messages {
 			a.toolUses += len(msg.ToolCalls)
-		}
-	}
-
-	for _, s := range sessions {
-		if a, ok := accum[s.Project]; ok {
-			a.sessions[s.SessionID] = true
 		}
 	}
 

@@ -358,7 +358,12 @@ func buildSessions(raw *model.RawData, projectMap map[string]string, opts *Optio
 		s.Model = ts.Model
 		s.GitBranch = ts.GitBranch
 		s.PermissionMode = ts.PermissionMode
-		s.MessageCount = len(ts.Messages)
+		// += , not =: a session resumed in another directory has a second
+		// transcript under a different encoded project, and both files are
+		// folded into this one Session. ToolUseCount and Tokens below already
+		// accumulate, so assigning here made one Session report the messages of
+		// only its last file next to the tool uses of all of them.
+		s.MessageCount += len(ts.Messages)
 
 		for _, msg := range ts.Messages {
 			s.ToolUseCount += len(msg.ToolCalls)

@@ -32,11 +32,30 @@ func writeJSON(report *model.ForensicReport, outDir string, tz *time.Location) (
 	return []OutputFile{{Path: path, Size: fileSize(path)}}, nil
 }
 
-func convertTimezones(report *model.ForensicReport, tz *time.Location) *model.ForensicReport {
-	if tz == time.UTC {
-		return report
+// convertEventTimes copies events with their timestamps moved into tz. The same
+// event list is reachable both directly and through a finding's evidence, so the
+// copy keeps the caller's slice untouched.
+func convertEventTimes(events []model.InjectionEvent, tz *time.Location) []model.InjectionEvent {
+	if len(events) == 0 {
+		return events
 	}
+	out := make([]model.InjectionEvent, len(events))
+	for i, e := range events {
+		if !e.Timestamp.IsZero() {
+			e.Timestamp = e.Timestamp.In(tz)
+		}
+		out[i] = e
+	}
+	return out
+}
 
+// convertTimezones returns a copy of the report with every serialized timestamp
+// moved into tz. It deliberately does not skip the tz == time.UTC case: doing so
+// would make report.json correct only as long as every collector remembers to
+// normalize, and a single source left in time.Local would then silently stamp
+// the examining machine's zone onto the evidence. Converting unconditionally is
+// a no-op when the values are already UTC, and one branch fewer to reason about.
+func convertTimezones(report *model.ForensicReport, tz *time.Location) *model.ForensicReport {
 	r := *report
 
 	r.Meta.GeneratedAt = r.Meta.GeneratedAt.In(tz)
@@ -102,6 +121,29 @@ func convertTimezones(report *model.ForensicReport, tz *time.Location) *model.Fo
 			hist[i] = h
 		}
 		r.CommandHistory = hist
+	}
+
+	// Section 14. Investigators correlate these against the timeline and against
+	// injection_events.csv, so they must not stay behind in UTC while the rest of
+	// the report moves to the requested zone.
+	r.Injection.Events = convertEventTimes(r.Injection.Events, tz)
+	if len(r.Injection.Findings) > 0 {
+		findings := make([]model.InjectionFinding, len(r.Injection.Findings))
+		for i, f := range r.Injection.Findings {
+			f.Evidence = convertEventTimes(f.Evidence, tz)
+			findings[i] = f
+		}
+		r.Injection.Findings = findings
+	}
+	if len(r.Injection.Sessions) > 0 {
+		triage := make([]model.SessionTriage, len(r.Injection.Sessions))
+		for i, s := range r.Injection.Sessions {
+			if !s.StartedAt.IsZero() {
+				s.StartedAt = s.StartedAt.In(tz)
+			}
+			triage[i] = s
+		}
+		r.Injection.Sessions = triage
 	}
 
 	if len(r.Conversations) > 0 {

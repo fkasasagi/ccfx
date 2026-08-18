@@ -23,11 +23,15 @@ type rawSessionFile struct {
 	Name       string `json:"name"`
 }
 
+// safeUnixMilli converts Claude's epoch-milliseconds fields to UTC. time.UnixMilli
+// alone yields the value in time.Local, which would let the examining machine's
+// timezone leak into report.json; the renderer is the only layer that may apply
+// --timezone. See TestCollectNormalizesTimesToUTC.
 func safeUnixMilli(ms int64) time.Time {
 	if ms <= 0 {
 		return time.Time{}
 	}
-	return time.UnixMilli(ms)
+	return time.UnixMilli(ms).UTC()
 }
 
 func parseSessions(dir string) ([]model.SessionFile, error) {
