@@ -146,8 +146,10 @@ func main() {
 		fmt.Fprintf(os.Stderr,
 			"WARNING: -ac writes %s, a verbatim copy of %s.\n"+
 				"It includes .credentials.json — your OAuth token, in cleartext — if present,\n"+
-				"and --redact-pii does not apply to it. The archive is created 0600; keep it\n"+
-				"that way, encrypt it before sending it anywhere, and delete it when done.\n\n",
+				"and --redact-pii does not apply to it. The archive is restricted to your\n"+
+				"account (mode 0600; on Windows an explicit ACL, since mode bits mean\n"+
+				"nothing there); keep it that way, encrypt it before sending it\n"+
+				"anywhere, and delete it when done.\n\n",
 			acquisitionName, claudeDir)
 
 		a, err := acquire(claudeDir, *outDir)

@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -108,8 +109,12 @@ func TestAcquireKeepsEmptyDirsAndSymlinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(target) != "/tmp/claude-0/task-output" {
-		t.Errorf("link target = %q, want the path unfollowed", target)
+	// Windows records the link with its own separator, so Readlink there returns
+	// `\tmp\claude-0\task-output`. Storing whatever the OS reports verbatim is
+	// the point — the assertion, not the archive, is what has to be platform-aware.
+	wantTarget := filepath.FromSlash("/tmp/claude-0/task-output")
+	if string(target) != wantTarget {
+		t.Errorf("link target = %q, want %q unfollowed", target, wantTarget)
 	}
 	if res.Symlinks != 1 {
 		t.Errorf("Symlinks = %d, want 1", res.Symlinks)
@@ -150,9 +155,7 @@ func TestAcquireArchiveIsPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if mode := info.Mode().Perm(); mode != 0o600 {
-		t.Errorf("archive mode = %04o, want 0600 — it contains a cleartext token", mode)
-	}
+	assertArchivePrivate(t, res.Path, info)
 }
 
 func TestAcquireExcludesTheOutputDirectory(t *testing.T) {
@@ -198,6 +201,15 @@ func TestAcquireLeavesSourceUntouched(t *testing.T) {
 		t.Fatalf("entry count changed: %d -> %d", len(before), len(after))
 	}
 	for path, mod := range before {
+		// acquire opens the source read-only and writes only into outDir, so any
+		// movement here comes from the filesystem, not from us. NTFS settles a
+		// directory's last-write time after the fact, which makes the directory
+		// entries flap on Windows; the files -- the evidence -- must not move.
+		if runtime.GOOS == "windows" {
+			if info, err := os.Stat(path); err == nil && info.IsDir() {
+				continue
+			}
+		}
 		if !after[path].Equal(mod) {
 			t.Errorf("%s mtime changed: %s -> %s", path, mod, after[path])
 		}
